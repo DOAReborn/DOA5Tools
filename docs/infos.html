@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DOA5Tools – Guide</title>
+<meta name="description" content="A single ASI plugin for Dead or Alive 5 Last Round: lobbies, rematch, borderless, ultrawide and more.">
+<link rel="stylesheet" href="style.css">
+<script src="lang.js"></script>
+</head>
+<body>
+<nav>
+  <a class="logo" href="index.html">DOA5<span>Tools</span></a>
+  <a href="infos.html" class="actif"><span class="en">Guide</span><span class="fr">Guide</span></a>
+  <a href="planned.html"><span class="en">Planned</span><span class="fr">À venir</span></a>
+  <a href="https://github.com/DOAReborn/DOA5Tools/releases/latest/download/DOA5Tools.zip"><span class="en">Download</span><span class="fr">Télécharger</span></a>
+  <button id="langue" type="button" title="EN / FR"><span class="en">FR</span><span class="fr">EN</span></button>
+</nav>
+<header class="bandeau">
+  <h1><span class="en">Guide</span><span class="fr">Guide</span></h1>
+  <p class="en">Features, install, settings and FAQ.</p>
+  <p class="fr">Fonctions, installation, réglages et FAQ.</p>
+</header>
+<main>
+
+<section>
+  <h2 class="en">Features</h2><h2 class="fr">Fonctions</h2>
+  <h3 class="en">Lobby</h3><h3 class="fr">Salons</h3>
+  <ul class="en">
+    <li>Adds the missing <strong>Lobby</strong> entry to the Online menu, with pretty much every feature available.</li>
+    <li>Working invitations. Press <code>F7</code> in a lobby to copy your room link to the clipboard.</li>
+  </ul>
+  <ul class="fr">
+    <li>Ajoute l’entrée <strong>Salon</strong> manquante au menu En ligne, avec presque toutes ses fonctions.</li>
+    <li>Invitations fonctionnelles. <code>F7</code> dans un salon copie le lien du salon dans le presse-papiers.</li>
+  </ul>
+  <h3>Rematch</h3>
+  <ul class="en">
+    <li>With only two players queuing in a lobby, a <em>Rematch</em> menu shows up at the end of a fight so you can play again right away.</li>
+    <li>If a player leaves the menu or a third player joins the queue, the room goes back to normal.</li>
+    <li>Spectators can watch rematches with the lobby’s built-in spectator mode (do not queue).</li>
+  </ul>
+  <ul class="fr">
+    <li>Quand seuls deux joueurs sont dans la file d’un salon, un menu <em>Rematch</em> s’affiche en fin de combat pour rejouer tout de suite.</li>
+    <li>Si un joueur quitte le menu ou qu’un troisième rejoint la file, le salon reprend son fonctionnement normal.</li>
+    <li>Les spectateurs peuvent suivre les rematchs avec le mode spectateur du salon (sans entrer dans la file).</li>
+  </ul>
+  <h3 class="en">Miscellaneous</h3><h3 class="fr">Divers</h3>
+  <ul class="en">
+    <li>Shows your real connection type to others: <code>[n]</code> wired, <code>&lt;n&gt;</code> Wi-Fi.</li>
+    <li>Borderless fullscreen (<code>F11</code> cycles between modes).</li>
+    <li>Skips the startup logos and intro.</li>
+    <li>Ultrawide and other non-16:9 screens (21:9, 32:9, 16:10…).</li>
+    <li>60 FPS in menus and offline modes (requires AutoLink).</li>
+  </ul>
+  <ul class="fr">
+    <li>Affiche aux autres votre vrai type de connexion : <code>[n]</code> filaire, <code>&lt;n&gt;</code> Wi-Fi.</li>
+    <li>Plein écran fenêtré (<code>F11</code> passe d’un mode à l’autre).</li>
+    <li>Passe les logos et l’intro au démarrage.</li>
+    <li>Écrans ultrawide et autres formats que le 16:9 (21:9, 32:9, 16:10…).</li>
+    <li>60 FPS dans les menus et les modes hors ligne (nécessite AutoLink).</li>
+  </ul>
+</section>
+
+<section>
+  <h2 class="en">Install</h2><h2 class="fr">Installation</h2>
+  <ol class="en">
+    <li>A clean Steam install of the game is recommended.</li>
+    <li>Extract the zip next to <code>game.exe</code>: <code>dinput8.dll</code> (Ultimate ASI Loader), <code>DOA5Tools.asi</code> and <code>DOA5Tools.ini</code>.</li>
+    <li>Launch the game.</li>
+  </ol>
+  <ol class="fr">
+    <li>Une installation Steam propre du jeu est conseillée.</li>
+    <li>Extraire le zip à côté de <code>game.exe</code> : <code>dinput8.dll</code> (Ultimate ASI Loader), <code>DOA5Tools.asi</code> et <code>DOA5Tools.ini</code>.</li>
+    <li>Lancer le jeu.</li>
+  </ol>
+  <p class="note en">Fully compatible with AutoLink. To uninstall, delete these files.</p>
+  <p class="note fr">Entièrement compatible avec AutoLink. Pour désinstaller, supprimer ces fichiers.</p>
+
+  <h3>Linux / Steam Deck (Proton)</h3>
+  <p class="en">In Steam: right-click the game → <em>Properties</em> → <em>Launch options</em>, and paste:</p>
+  <p class="fr">Dans Steam : clic droit sur le jeu → <em>Propriétés</em> → <em>Options de lancement</em>, puis coller :</p>
+  <pre><code>WINEDLLOVERRIDES="dinput8=n,b" %command%</code></pre>
+  <p class="note en">Without it, Proton uses its own <code>dinput8.dll</code> and the plugin silently does not load. With ReShade or another <code>d3d9.dll</code> mod: <code>WINEDLLOVERRIDES="dinput8,d3d9=n,b" %command%</code></p>
+  <p class="note fr">Sans cela, Proton utilise son propre <code>dinput8.dll</code> et le plugin ne se charge pas, sans message. Avec ReShade ou un autre mod <code>d3d9.dll</code> : <code>WINEDLLOVERRIDES="dinput8,d3d9=n,b" %command%</code></p>
+</section>
+
+<section>
+  <h2 class="en">Settings</h2><h2 class="fr">Réglages</h2>
+  <p class="en">Everything is in <code>DOA5Tools.ini</code>. Set a feature to <code>0</code> in <code>[DOA5Tools]</code> to turn it off:</p>
+  <p class="fr">Tout se règle dans <code>DOA5Tools.ini</code>. Mettre une fonction à <code>0</code> dans <code>[DOA5Tools]</code> pour la désactiver :</p>
+  <pre><code>[DOA5Tools]
+Lobby=1
+JoinFix=1
+Rematch=1
+WiFiWired=1
+Borderless=1
+60fps=1
+Skip=1
+Ultrawide=1</code></pre>
+  <ul class="en">
+    <li><code>[JoinFix] CopyLinkKey</code>: key that copies your room link (<code>118</code> = F7, <code>0</code> = none).</li>
+    <li><code>[Rematch] Tirage</code>: random characters/stage on rematch, <code>1</code> = new draw, <code>0</code> = same as last fight.</li>
+    <li><code>[Borderless] Mode</code>: <code>2</code> borderless, <code>1</code> window, <code>0</code> game setting. <code>ToggleKey=F11</code>.</li>
+    <li><code>[Ultrawide] Width</code>/<code>Height</code>: <code>0</code> = your desktop resolution. Does nothing on a 16:9 screen unless set.</li>
+  </ul>
+  <ul class="fr">
+    <li><code>[JoinFix] CopyLinkKey</code> : touche qui copie le lien du salon (<code>118</code> = F7, <code>0</code> = aucune).</li>
+    <li><code>[Rematch] Tirage</code> : personnages/stage aléatoires au rematch, <code>1</code> = nouveau tirage, <code>0</code> = comme au combat précédent.</li>
+    <li><code>[Borderless] Mode</code> : <code>2</code> plein écran fenêtré, <code>1</code> fenêtre, <code>0</code> réglage du jeu. <code>ToggleKey=F11</code>.</li>
+    <li><code>[Ultrawide] Width</code>/<code>Height</code> : <code>0</code> = résolution du bureau. Sans effet sur un écran 16:9 sauf si renseignés.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>FAQ</h2>
+  <h3 class="en">The Lobby entry does not appear.</h3><h3 class="fr">L’entrée Salon n’apparaît pas.</h3>
+  <p class="en">Check that <code>dinput8.dll</code> and <code>DOA5Tools.asi</code> are next to <code>game.exe</code>. On Linux, check the launch option above.</p>
+  <p class="fr">Vérifier que <code>dinput8.dll</code> et <code>DOA5Tools.asi</code> sont à côté de <code>game.exe</code>. Sous Linux, vérifier l’option de lancement ci-dessus.</p>
+  <h3 class="en">Do both players need the plugin?</h3><h3 class="fr">Les deux joueurs doivent-ils avoir le plugin ?</h3>
+  <p class="en">For Rematch, yes: both players in the queue need DOA5Tools.</p>
+  <p class="fr">Pour le rematch, oui : les deux joueurs de la file doivent avoir DOA5Tools.</p>
+  <h3 class="en">Does it modify game files?</h3><h3 class="fr">Est-ce que ça modifie les fichiers du jeu ?</h3>
+  <p class="en">No. Everything happens in memory while the game runs. Deleting the files restores the original game.</p>
+  <p class="fr">Non. Tout se passe en mémoire pendant que le jeu tourne. Supprimer les fichiers rend le jeu d’origine.</p>
+</section>
+
+<section>
+  <h2 class="en">Credits</h2><h2 class="fr">Crédits</h2>
+  <ul>
+    <li><span class="en">Ultrawide is a C port of</span><span class="fr">Ultrawide est un portage en C de</span> <a href="https://codeberg.org/Lyall/DOA5LRFix">DOA5LRFix</a> <span class="en">by</span><span class="fr">par</span> <strong>Lyall</strong> (MIT).</li>
+    <li><a href="https://github.com/ThirteenAG/Ultimate-ASI-Loader">Ultimate ASI Loader</a> <span class="en">by</span><span class="fr">par</span> <strong>ThirteenAG</strong> (MIT).</li>
+    <li><span class="en">Lobby, JoinFix, WiFi-Wired, Borderless and 60fps are reworked from the DOA5LR-Salons pack</span><span class="fr">Lobby, JoinFix, WiFi-Wired, Borderless et 60fps sont repris du pack DOA5LR-Salons</span> (FGCsnow &amp; BonuStage).</li>
+  </ul>
+</section>
+
+</main>
+<footer>
+  <span class="en">DOA5Tools is a fan project, not affiliated with Koei Tecmo. This site uses no cookies, trackers or external resources.</span>
+  <span class="fr">DOA5Tools est un projet de fans, sans lien avec Koei Tecmo. Ce site n’utilise ni cookies, ni traceurs, ni ressources externes.</span>
+</footer>
+</body>
+</html>
