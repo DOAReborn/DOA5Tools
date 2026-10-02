@@ -4,7 +4,7 @@
 #include <string.h>
 #include "commun.h"
 
-#define VERSION_DOA5TOOLS "1.0"
+#define VERSION_DOA5TOOLS "1.1"
 
 static char g_ini[MAX_PATH];
 const char *CheminIni(void) { return g_ini; }
@@ -90,6 +90,7 @@ BOOL WINAPI DllMain(HINSTANCE h, DWORD raison, LPVOID r)
     if (Reglage("DOA5Tools", "Rematch", 1)) Rematch_Demarrer();
     if (Reglage("DOA5Tools", "WiFiWired", 1)) WiFiWired_Demarrer();
     if (Reglage("DOA5Tools", "60fps", 1)) Fps60_Demarrer();
+    if (Reglage("DOA5Tools", "ReplayMenu", 1)) ReplayMenu_Demarrer();
     if (g_nbTics) {
         HANDLE t = CreateThread(NULL, 0, PoserTic, NULL, 0, NULL);
         if (t) CloseHandle(t);

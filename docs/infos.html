@@ -52,6 +52,7 @@
     <li>Skips the startup logos and intro.</li>
     <li>Ultrawide and other non-16:9 screens (21:9, 32:9, 16:10…).</li>
     <li>60 FPS in menus and offline modes (requires AutoLink).</li>
+    <li>Replay list in rows (names, characters, stage, date), filters by character (L1) and player (R1), archives (Square).</li>
   </ul>
   <ul class="fr">
     <li>Affiche aux autres votre vrai type de connexion : <code>[n]</code> filaire, <code>&lt;n&gt;</code> Wi-Fi.</li>
@@ -59,6 +60,7 @@
     <li>Passe les logos et l’intro au démarrage.</li>
     <li>Écrans ultrawide et autres formats que le 16:9 (21:9, 32:9, 16:10…).</li>
     <li>60 FPS dans les menus et les modes hors ligne (nécessite AutoLink).</li>
+    <li>Liste des replays en lignes (pseudos, persos, stage, date), filtres par perso (L1) et par joueur (R1), archives (Carré).</li>
   </ul>
 </section>
 
@@ -97,18 +99,21 @@ WiFiWired=1
 Borderless=1
 60fps=1
 Skip=1
-Ultrawide=1</code></pre>
+Ultrawide=1
+ReplayMenu=1</code></pre>
   <ul class="en">
-    <li><code>[JoinFix] CopyLinkKey</code>: key that copies your room link (<code>118</code> = F7, <code>0</code> = none).</li>
+    <li>F7 in a lobby copies your room link.</li>
     <li><code>[Rematch] Tirage</code>: random characters/stage on rematch, <code>1</code> = new draw, <code>0</code> = same as last fight.</li>
-    <li><code>[Borderless] Mode</code>: <code>2</code> borderless, <code>1</code> window, <code>0</code> game setting. <code>ToggleKey=F11</code>.</li>
+    <li><code>[Borderless] Mode</code>: <code>2</code> borderless, <code>1</code> window, <code>0</code> game setting. F11 cycles the modes.</li>
     <li><code>[Ultrawide] Width</code>/<code>Height</code>: <code>0</code> = your desktop resolution. Does nothing on a 16:9 screen unless set.</li>
+    <li><code>[ReplayMenu] Recycle</code>: <code>1</code> = deleted replays go to a <code>REPLY_CORBEILLE</code> folder, <code>0</code> = erased for good.</li>
   </ul>
   <ul class="fr">
-    <li><code>[JoinFix] CopyLinkKey</code> : touche qui copie le lien du salon (<code>118</code> = F7, <code>0</code> = aucune).</li>
+    <li>F7 dans un salon copie le lien du salon.</li>
     <li><code>[Rematch] Tirage</code> : personnages/stage aléatoires au rematch, <code>1</code> = nouveau tirage, <code>0</code> = comme au combat précédent.</li>
-    <li><code>[Borderless] Mode</code> : <code>2</code> plein écran fenêtré, <code>1</code> fenêtre, <code>0</code> réglage du jeu. <code>ToggleKey=F11</code>.</li>
+    <li><code>[Borderless] Mode</code> : <code>2</code> plein écran fenêtré, <code>1</code> fenêtre, <code>0</code> réglage du jeu. F11 fait défiler les modes.</li>
     <li><code>[Ultrawide] Width</code>/<code>Height</code> : <code>0</code> = résolution du bureau. Sans effet sur un écran 16:9 sauf si renseignés.</li>
+    <li><code>[ReplayMenu] Recycle</code> : <code>1</code> = les replays supprimés vont dans un dossier <code>REPLY_CORBEILLE</code>, <code>0</code> = effacés pour de bon.</li>
   </ul>
 </section>
 

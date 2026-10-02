@@ -19,5 +19,6 @@ void Borderless_Demarrer(void);
 void Fps60_Demarrer(void);
 void Skip_Demarrer(void);
 void Ultrawide_Demarrer(void);
+void ReplayMenu_Demarrer(void);
 
 #endif
