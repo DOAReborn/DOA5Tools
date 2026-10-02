@@ -52,7 +52,7 @@ i686-w64-mingw32-gcc -O2 -s -shared -static -Wall -DDOA5TOOLS -o DOA5Tools.asi d
 
 ## Credits
 
-**DOA5Tools** by **FGCsnow**, **BonuStage** and **Buraiden/ice**, a **DOAReborn** project.
+**DOA5Tools** by **FGCsnow**, **BonuStage**, **Buraiden/ice** and **Hajin'**, a **DOAReborn** project.
 Lobby, JoinFix, WiFi-Wired, Borderless and 60fps are reworked from our earlier DOA5LR-Salons pack.
 
 Third-party:
