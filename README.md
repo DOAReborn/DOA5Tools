@@ -52,6 +52,9 @@ i686-w64-mingw32-gcc -O2 -s -shared -static -Wall -DDOA5TOOLS -o DOA5Tools.asi d
 
 ## Credits
 
+**DOA5Tools** by **FGCsnow**, **BonuStage** and **Buraiden/ice**, a **DOAReborn** project.
+Lobby, JoinFix, WiFi-Wired, Borderless and 60fps are reworked from our earlier DOA5LR-Salons pack.
+
+Third-party:
 - Ultrawide is a C port of [DOA5LRFix](https://codeberg.org/Lyall/DOA5LRFix) by **Lyall** (MIT, see `third-party/`).
 - [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader) by **ThirteenAG** (MIT, see `third-party/`).
-- Lobby, JoinFix, WiFi-Wired, Borderless and 60fps are reworked from the DOA5LR-Salons pack (FGCsnow & BonuStage).
