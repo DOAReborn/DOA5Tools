@@ -1,13 +1,5 @@
-/* Tables du menu natif (relocations des 3 fonctions copiees, ressource du menu en ligne), reprises telles quelles
- * de DOA5LR-Lobby 0.2.3 (Generated.h) et identiques dans Lobby 0.9.0. Seul changement : syntaxe C (typedef). */
-// Recovered data for DOA5LR Lobby from the native 0.2.3 ASI.
-// Source binary SHA-256: 25d69528aafddb3f2bbd48167f93507f1a3509f72df5c4d74b2ffa0211b71604
-// Reproduce with tools/extract-generated-header.py. See RECOVERY.md.
-// Values are exact binary data; original whitespace/comments are unavailable.
-
 typedef struct { unsigned offset; unsigned target; } Rel;
 
-// ASI RVA 0x141C0; 15 entries, each two little-endian uint32 values.
 static const Rel InitRel[] = {
     {0x3B, 0x696290},
     {0x2BA, 0x6982A0},
@@ -26,7 +18,6 @@ static const Rel InitRel[] = {
     {0x9D4, 0x85B156},
 };
 
-// ASI RVA 0x14238; 20 entries, each two little-endian uint32 values.
 static const Rel SelectRel[] = {
     {0x1A, 0x7D62A0},
     {0x28, 0x7D69C0},
@@ -50,7 +41,6 @@ static const Rel SelectRel[] = {
     {0x1C6, 0x85B156},
 };
 
-// ASI RVA 0x142D8; 30 entries, each two little-endian uint32 values.
 static const Rel EnterRel[] = {
     {0x49, 0x7D94E0},
     {0x56, 0x7D6790},
@@ -84,7 +74,6 @@ static const Rel EnterRel[] = {
     {0x353, 0x85B156},
 };
 
-// ASI RVA 0x143C8; exact 0x160-byte original menu resource.
 static const unsigned char MenuResource[] = {
     0x20, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x60, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,

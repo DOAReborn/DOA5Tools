@@ -1,31 +1,5 @@
-/*  DOA5LR-Ultrawide 1.0 (02/10/2026) - resolution personnalisee / ecran large (21:9, 32:9...) et HUD corrige.
- *
- *  Reprise en C de DOA5LRFix 0.0.1 de Lyall (https://codeberg.org/Lyall/DOA5LRFix), licence MIT :
- *    Copyright (c) 2025 Lyall. Permission is hereby granted, free of charge, to any person obtaining a copy of this
- *    software and associated documentation files (the "Software"), to deal in the Software without restriction,
- *    including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
- *    sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
- *    following conditions: The above copyright notice and this permission notice shall be included in all copies or
- *    substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
- *  Memes endroits et memes calculs que l'original ; sans spdlog / inipp / safetyhook / zydis (crochets ecrits ici,
- *  instructions deplacees verifiees octet par octet), sans journal detaille (resolution, chemins, horodatage).
- *
- *  Cible : game.exe 1.10C (RVA). Endroits (signatures de l'original, chacune unique dans le jeu) :
- *   834FFE  mise a l'echelle de la resolution : je -> jmp           (si CustomResolution)
- *   37B6B4  format d'image : [eax+0xC4] = rapport largeur/hauteur    (si CustomResolution)
- *   3F5621  resolution : "ja" neutralise ; edx/edi (et [ecx+0xC]/[ecx+0x10]) = resolution voulue ; suivi du rapport
- *   7D067B  taille du HUD (matrice [ebx+8/0x1C/0x38/0x3C])           (si FixHUD)
- *   259983, 2599C1  guide des commandes (edx/ecx, esi/ecx)             (si FixHUD)
- *   746C10  videos ([ebp-0x18/-0x14/-0x10/-0x0C])                     (si FixHUD)
- *
- *  1.0 : 1.0-test valide en 21:9. Actif par defaut, mais ne fait RIEN si l'ecran (resolution du bureau) est en 16:9
- *        et qu'aucune resolution n'est imposee (Width/Height) : un joueur en 16:9 garde exactement le jeu d'origine.
- *  Reglages, section [Ultrawide] : CustomResolution=1 (Width=0 / Height=0 = resolution du bureau), FixHUD=1.
- *  En .asi seul : DOA5LR-Ultrawide.ini. Dans DOA5Tools (compile avec -DDOA5TOOLS) : DOA5Tools.ini, [DOA5Tools]
- *  Ultrawide=0 par defaut.
- *  Compilation seule (LLVM-MinGW, 32 bits) :
- *    i686-w64-mingw32-gcc -O2 -s -shared -static -Wall -o DOA5LR-Ultrawide.asi ultrawide.c
- */
+/* Based on DOA5LRFix by Lyall (https://codeberg.org/Lyall/DOA5LRFix).
+ * Copyright (c) 2025 Lyall. MIT License, see third-party/LICENSE-DOA5LRFix.txt. */
 #include <windows.h>
 #include <stdint.h>
 #include <string.h>
@@ -36,7 +10,6 @@
 static uint8_t *g_base;
 static int g_customRes = 1, g_resX, g_resY, g_fixHUD = 1;
 
-/* ---- rapport d'aspect (CalculateAspectRatio de l'original) ------------------------------------ */
 static const float NATIF = 16.0f / 9.0f;
 static volatile float g_aspect = 16.0f / 9.0f, g_mult = 1.0f;
 static int g_courX, g_courY;
@@ -47,10 +20,6 @@ static void CalculerAspect(void)
     g_mult = g_aspect / NATIF;
 }
 
-/* ---- crochet en milieu de fonction -------------------------------------------------------------
- * stub : pushfd ; pushad ; ebp = registres ; sauvegarde x87/SSE (fxsave) ; handler(registres) ; fxrstor ; popad ;
- * popfd ; instructions d'origine deplacees ; jmp suite. r[0..7] = EDI ESI EBP ESP EBX EDX ECX EAX (modifiables,
- * sauf ESP). Les instructions deplacees sont verifiees avant (masque : 0 = octet libre, ex. adresse absolue). */
 typedef void (__cdecl *Handler_t)(uint32_t *r);
 typedef struct { DWORD rva; uint8_t n; const uint8_t *octets; const uint8_t *masque; int8_t rel32; } Site;
 static int Verifier(const Site *s)
@@ -65,28 +34,28 @@ static int Crocheter(const Site *s, Handler_t h)
     uint8_t *b = (uint8_t *)VirtualAlloc(NULL, 128, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE), *p = b;
     if (!b) return 0;
     static const uint8_t avant[] = {
-        0x9C, 0x60,                               /* pushfd ; pushad */
-        0x89, 0xE5,                               /* mov ebp, esp */
-        0x81, 0xEC, 0x10, 0x02, 0x00, 0x00,       /* sub esp, 0x210 */
-        0x83, 0xE4, 0xF0,                         /* and esp, -16 */
-        0x0F, 0xAE, 0x04, 0x24,                   /* fxsave [esp] */
-        0x55 };                                   /* push ebp (registres) */
+        0x9C, 0x60,
+        0x89, 0xE5,
+        0x81, 0xEC, 0x10, 0x02, 0x00, 0x00,
+        0x83, 0xE4, 0xF0,
+        0x0F, 0xAE, 0x04, 0x24,
+        0x55 };
     memcpy(p, avant, sizeof avant); p += sizeof avant;
-    *p++ = 0xE8; *(int32_t *)p = (int32_t)((uint8_t *)h - (p + 4)); p += 4;               /* call handler */
+    *p++ = 0xE8; *(int32_t *)p = (int32_t)((uint8_t *)h - (p + 4)); p += 4;
     static const uint8_t apres[] = {
-        0x83, 0xC4, 0x04,                         /* add esp, 4 */
-        0x0F, 0xAE, 0x0C, 0x24,                   /* fxrstor [esp] */
-        0x89, 0xEC,                               /* mov esp, ebp */
-        0x61, 0x9D };                             /* popad ; popfd */
+        0x83, 0xC4, 0x04,
+        0x0F, 0xAE, 0x0C, 0x24,
+        0x89, 0xEC,
+        0x61, 0x9D };
     memcpy(p, apres, sizeof apres); p += sizeof apres;
     uint8_t *depl = p;
-    memcpy(p, site, s->n); p += s->n;                                                         /* instructions d'origine */
-    if (s->rel32 >= 0) {                                                                      /* saut relatif : recalcul */
+    memcpy(p, site, s->n); p += s->n;
+    if (s->rel32 >= 0) {
         const int k = s->rel32;
         uint8_t *cible = site + k + 4 + *(int32_t *)(site + k);
         *(int32_t *)(depl + k) = (int32_t)(cible - (depl + k + 4));
     }
-    *p++ = 0xE9; *(int32_t *)p = (int32_t)((site + s->n) - (p + 4)); p += 4;               /* jmp suite */
+    *p++ = 0xE9; *(int32_t *)p = (int32_t)((site + s->n) - (p + 4)); p += 4;
     DWORD ancien;
     if (!VirtualProtect(b, 128, PAGE_EXECUTE_READ, &ancien)) return 0;
     FlushInstructionCache(GetCurrentProcess(), b, 128);
@@ -101,7 +70,6 @@ enum { EDI, ESI, EBP, ESP_, EBX, EDX, ECX, EAX };
 #define F(adresse) (*(volatile float *)(uintptr_t)(adresse))
 #define I(adresse) (*(volatile int32_t *)(uintptr_t)(adresse))
 
-/* ---- handlers (memes formules que l'original) ---------------------------------------------------- */
 static void __cdecl SurAspect(uint32_t *r) { F(r[EAX] + 0xC4) = g_aspect; }
 static void __cdecl SurResolution(uint32_t *r)
 {
@@ -147,7 +115,6 @@ static void __cdecl SurVideos(uint32_t *r)
     }
 }
 
-/* ---- sites : octets d'origine (game.exe 1.10C) et masques (0 = adresse absolue, non comparee) ---- */
 static const uint8_t O_ECHELLE[] = {0x74, 0x0E}, M_2[] = {1, 1};
 static const uint8_t O_ASPECT[] = {0xF3, 0x0F, 0x10, 0x80, 0xC4, 0x00, 0x00, 0x00}, M_8[] = {1, 1, 1, 1, 1, 1, 1, 1};
 static const uint8_t O_RESOL[] = {0x77, 0x13, 0x89, 0x79, 0x18}, M_5[] = {1, 1, 1, 1, 1};
@@ -157,8 +124,8 @@ static const uint8_t O_GUIDE_V[] = {0xF2, 0x0F, 0x5E, 0xD0, 0xF2, 0x0F, 0x10, 0x
 static const uint8_t O_VIDEOS[] = {0x8A, 0x55, 0xF8, 0x2A, 0xC2};
 static const Site S_ECHELLE = {0x834FFE, 2, O_ECHELLE, M_2, -1};
 static const Site S_ASPECT  = {0x37B6B4, 8, O_ASPECT, M_8, -1};
-static const Site S_RESOL   = {0x3F5621, 5, O_RESOL, M_5, -1};      /* "ja" (2 octets) remplace par nop nop */
-static const Site S_HUD     = {0x7D067B, 10, O_HUD, M_10, 6};       /* jne rel32 a l'octet 6 : recalcule */
+static const Site S_RESOL   = {0x3F5621, 5, O_RESOL, M_5, -1};
+static const Site S_HUD     = {0x7D067B, 10, O_HUD, M_10, 6};
 static const Site S_GUIDE_H = {0x259983, 10, O_GUIDE_H, M_GUIDE_H, -1};
 static const Site S_GUIDE_V = {0x2599C1, 12, O_GUIDE_V, M_GUIDE_V, -1};
 static const Site S_VIDEOS  = {0x746C10, 5, O_VIDEOS, M_5, -1};
@@ -187,20 +154,20 @@ static DWORD WINAPI Installer(LPVOID p)
     (void)p;
     g_base = (uint8_t *)GetModuleHandleA(NULL);
     int ok = 0;
-    for (int t = 0; t < 60000 && !ok; t++) {                /* code dechiffre par SteamStub (1 ms : avant le 1er */
-                                                            /* reglage de resolution du jeu, comme l'original)  */
+    for (int t = 0; t < 60000 && !ok; t++) {
+
         ok = Verifier(&S_RESOL) && Verifier(&S_ASPECT) && Verifier(&S_ECHELLE) && Verifier(&S_HUD) &&
              Verifier(&S_GUIDE_H) && Verifier(&S_GUIDE_V) && Verifier(&S_VIDEOS);
         if (!ok) Sleep(1);
     }
     if (!ok) { Note("refus_version_game_exe", 0, 0); return 0; }
     int res = 0, hud = 0;
-    if (g_customRes && (g_resX <= 0 || g_resY <= 0)) {     /* resolution du bureau */
+    if (g_customRes && (g_resX <= 0 || g_resY <= 0)) {
         DEVMODEW dm;
         memset(&dm, 0, sizeof dm);
         dm.dmSize = sizeof dm;
         if (EnumDisplaySettingsW(NULL, ENUM_CURRENT_SETTINGS, &dm)) { g_resX = (int)dm.dmPelsWidth; g_resY = (int)dm.dmPelsHeight; }
-        /* 1.0 : ecran 16:9 et rien d'impose -> aucun crochet, jeu d'origine */
+
         if (g_resX > 0 && g_resY > 0) {
             const float a = (float)g_resX / (float)g_resY;
             if (a > NATIF - 0.01f && a < NATIF + 0.01f) { Note("ecran_16_9 -> inactif", 0, 0); return 0; }
@@ -210,7 +177,7 @@ static DWORD WINAPI Installer(LPVOID p)
         if (g_resX <= 0 || g_resY <= 0) g_customRes = 0;
         else res = PatcherOctet(S_ECHELLE.rva, 0xEB) + Crocheter(&S_ASPECT, SurAspect);
     }
-    /* resolution : "ja" -> nop nop, puis crochet au meme endroit (deplace : nop nop + mov [ecx+0x18], edi) */
+
     if (PatcherOctet(S_RESOL.rva, 0x90) && PatcherOctet(S_RESOL.rva + 1, 0x90)) {
         static uint8_t o_resNop[5];
         static uint8_t m_resNop[5] = {1, 1, 1, 1, 1};

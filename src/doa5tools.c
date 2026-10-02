@@ -1,17 +1,3 @@
-/*  DOA5Tools 1.0 (02/10/2026) - un seul .asi pour les modules DOA5LR (game.exe 1.10C) du projet DOA5Tools.
- *
- *  Modules (sources a part, meme comportement que leurs versions separees validees en jeu) :
- *   Lobby 1.0.3, JoinFix 1.0, Rematch 1.0, WiFi-Wired 1.0, Borderless 2.0, 60fps 1.0 (AutoLink requis), Skip 1.0,
- *   Ultrawide 1.0 (reprise de DOA5LRFix de Lyall, MIT ; inactif sur un ecran 16:9).
- *  DOA5Tools.ini, section [DOA5Tools] : un interrupteur par module (1 = actif, 0 = aucun crochet pose) et Log.
- *  Ce fichier : point d'entree, reglages, journal unique, tic Steam partage (JoinFix + Lobby).
- *  Aucun reseau autre que les appels Steam du jeu ; fichiers : DOA5Tools.ini (lecture ; Borderless y enregistre son
- *  mode), DOA5LR.ini du jeu (Borderless, cle SCREEN_TYPE seulement), DOA5Tools.log si Log=1.
- *
- *  Compilation (LLVM-MinGW, 32 bits), dans ce dossier :
- *    i686-w64-mingw32-gcc -O2 -s -shared -static -Wall -DDOA5TOOLS -o DOA5Tools.asi doa5tools.c lobby.c joinfix.c
- *        rematch.c wifiwired.c borderless.c fps60.c skip.c ultrawide.c -liphlpapi -lshell32
- */
 #include <windows.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -24,7 +10,6 @@ static char g_ini[MAX_PATH];
 const char *CheminIni(void) { return g_ini; }
 int Reglage(const char *section, const char *cle, int defaut) { return GetPrivateProfileIntA(section, cle, defaut, g_ini); }
 
-/* ---- journal ---------------------------------------------------------------------------------- */
 static FILE *g_log;
 static long g_octets;
 static DWORD g_t0;
@@ -39,9 +24,8 @@ void Journal(const char *module, const char *libelle, long a, long b, long c)
     LeaveCriticalSection(&g_cs);
 }
 
-/* ---- tic partage : SteamAPI_RunCallbacks (table d'imports du jeu), thread du jeu ------------------ */
 #define RVA_IAT_RUNCALLBACKS 0x9663DC
-#define RVA_KTOL_PRINTF      0x846010   /* reconnaissance de la version / dechiffrement SteamStub */
+#define RVA_KTOL_PRINTF      0x846010
 static const uint8_t KTOL_PRINTF_BYTES[] = {0x55, 0x8B, 0xEC, 0x81, 0xEC, 0x04, 0x02, 0x00, 0x00};
 #define NB_TICS 4
 static Tic_t g_tics[NB_TICS];
@@ -97,16 +81,16 @@ BOOL WINAPI DllMain(HINSTANCE h, DWORD raison, LPVOID r)
     strncat(g_ini, "DOA5Tools.ini", sizeof g_ini - strlen(g_ini) - 1);
     if (Reglage("DOA5Tools", "Log", 0)) g_log = fopen(log, "w");
     Journal("DOA5Tools", "debut " VERSION_DOA5TOOLS, 0, 0, 0);
-    /* Skip en premier : il doit agir avant la sequence de demarrage du jeu */
+
     if (Reglage("DOA5Tools", "Skip", 1)) Skip_Demarrer();
-    if (Reglage("DOA5Tools", "Ultrawide", 1)) Ultrawide_Demarrer();   /* tot (resolution) ; ne fait rien en 16:9 */
-    if (Reglage("DOA5Tools", "Borderless", 1)) Borderless_Demarrer();   /* avant que le jeu ne lise DOA5LR.ini */
+    if (Reglage("DOA5Tools", "Ultrawide", 1)) Ultrawide_Demarrer();
+    if (Reglage("DOA5Tools", "Borderless", 1)) Borderless_Demarrer();
     if (Reglage("DOA5Tools", "Lobby", 1)) Lobby_Demarrer();
     if (Reglage("DOA5Tools", "JoinFix", 1)) JoinFix_Demarrer();
     if (Reglage("DOA5Tools", "Rematch", 1)) Rematch_Demarrer();
     if (Reglage("DOA5Tools", "WiFiWired", 1)) WiFiWired_Demarrer();
     if (Reglage("DOA5Tools", "60fps", 1)) Fps60_Demarrer();
-    if (g_nbTics) {                                         /* seulement si un module en a besoin */
+    if (g_nbTics) {
         HANDLE t = CreateThread(NULL, 0, PoserTic, NULL, 0, NULL);
         if (t) CloseHandle(t);
     }

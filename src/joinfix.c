@@ -1,32 +1,3 @@
-/*  DOA5LR-JoinFix 1.0 (01/10/2026) - correctifs de jonction des salons (DOA5LR PC, game.exe 1.10C).
- *
- *  Reprise minimale de JoinFix 0.3 (projet DOA5Tools) : seulement ce qui sert, journal minimal.
- *
- *  KeyFix=1      : l'hote publie ses cles de chiffrement P2P dans les donnees du salon Steam comme du TEXTE
- *                  ("cryptSeed" 16 octets, "sigKey" 8 octets, contexte global RVA 0x20924B8 -> +0x1C / +0x2C).
- *                  Un octet nul coupe la valeur : les joueurs derivent une mauvaise cle et ne peuvent pas entrer
- *                  (~1 salon sur 11). Juste avant la publication, les octets nuls sont remplaces dans la cle du
- *                  jeu ET dans la valeur publiee (le jeu relit sa cle a chaque paquet : tout reste coherent).
- *                  Correctif cote HOTE : tout createur de salon doit l'avoir.
- *  InviteRetry=1 : apres une invitation acceptee, le jeu attend les donnees du salon (LobbyDataUpdate) pour
- *                  lancer la jonction ; si elles se perdent, rien ne se passe. On les redemande toutes les 3 s,
- *                  5 fois au plus.
- *  CopyLinkKey=118 : touche (code virtuel, 118 = F7, 0 = aucune) qui copie dans le presse-papiers le lien
- *                  steam://joinlobby/311730/<salon>/<hote> du salon courant (les salons prives n'ont pas de
- *                  bouton "Rejoindre" dans Steam). Bip aigu = copie, bip grave = pas de salon.
- *
- *  Retire depuis 0.3 : AcceptMembers (lisait les ID des membres, jamais demontre utile), FastFail (lisait l'ID
- *  de l'hote et l'etat de sa liaison ; le jeu abandonne seul apres son delai), KeyTest (essai).
- *
- *  Donnees : l'ID du salon (courant / invite) et, pour F7 seulement, l'ID de l'hote sont lus en memoire.
- *  Ils ne sont jamais ecrits dans le journal. Aucun reseau autre que les appels Steam du jeu.
- *  Journal (Log=1, 0 par defaut) : DOA5LR-JoinFix.log a cote du module, libelles fixes et nombres, 16 Ko au plus.
- *
- *  Tous les appels Steam se font sur le thread du jeu (tic = SteamAPI_RunCallbacks, via la table d'imports).
- *  Compilation (LLVM-MinGW, 32 bits) :
- *    i686-w64-mingw32-gcc -O2 -s -shared -static -Wall -o DOA5LR-JoinFix.asi joinfix.c
- */
-/*  Version integree a DOA5Tools : reglages [JoinFix] de DOA5Tools.ini, journal et tic communs. */
 #include <windows.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -36,22 +7,19 @@
 #define VERSION_MODULE "1.0"
 typedef uint64_t CSteamID;
 
-/* ---- adresses (game.exe 1.10C, RVA) ------------------------------------------------------- */
-#define RVA_KTOL_PRINTF      0x846010   /* sert a reconnaitre la version (et le dechiffrement SteamStub) */
+#define RVA_KTOL_PRINTF      0x846010
 static const uint8_t KTOL_PRINTF_BYTES[] = {0x55, 0x8B, 0xEC, 0x81, 0xEC, 0x04, 0x02, 0x00, 0x00};
-#define RVA_IAT_RUNCALLBACKS 0x9663DC   /* import SteamAPI_RunCallbacks */
-#define RVA_CRYPT_CTX        0x20924B8  /* pointeur : +0x1C cryptSeed[16], +0x2C sigKey[8] */
+#define RVA_IAT_RUNCALLBACKS 0x9663DC
+#define RVA_CRYPT_CTX        0x20924B8
 
-/* slots des interfaces Steam utilises (SDK de l'epoque du jeu) */
-#define MM_GET_NUM_MEMBERS   17         /* ISteamMatchmaking::GetNumLobbyMembers */
-#define MM_SET_LOBBY_DATA    20         /* ISteamMatchmaking::SetLobbyData */
-#define MM_REQUEST_DATA      28         /* ISteamMatchmaking::RequestLobbyData */
-#define MM_GET_OWNER         35         /* ISteamMatchmaking::GetLobbyOwner */
+#define MM_GET_NUM_MEMBERS   17
+#define MM_SET_LOBBY_DATA    20
+#define MM_REQUEST_DATA      28
+#define MM_GET_OWNER         35
 
 static uint8_t *g_base;
 static int g_keyFix = 1, g_inviteRetry = 1, g_copyKey = 0x76;
 
-/* journal commun (doa5tools.c) */
 static void Note(const char *libelle, long a, long b) { Journal("JoinFix", libelle, a, b, 0); }
 
 static int RemplacerPointeur(void **slot, void *crochet, void **original)
@@ -64,10 +32,9 @@ static int RemplacerPointeur(void **slot, void *crochet, void **original)
     return 1;
 }
 
-/* ---- Steam ---------------------------------------------------------------------------------- */
-static void *g_mm;                  /* ISteamMatchmaking */
-static CSteamID g_lobby;            /* salon courant (LobbyEnter / LobbyCreated reussis) */
-static CSteamID g_inviteLobby;      /* invitation acceptee, en attente des donnees du salon */
+static void *g_mm;
+static CSteamID g_lobby;
+static CSteamID g_inviteLobby;
 static DWORD g_inviteTick;
 static int g_inviteTries;
 
@@ -76,26 +43,25 @@ typedef CSteamID *(__thiscall *GetLobbyOwner_t)(void *self, CSteamID *ret, CStea
 typedef uint8_t (__thiscall *RequestLobbyData_t)(void *self, CSteamID lobby);
 static void **VtMM(void) { return *(void ***)g_mm; }
 
-/* callbacks Steam (CCallbackBase MSVC : [0] Run(pv, bIO, hCall), [1] Run(pv), [2] taille) */
 typedef struct CB { void **vt; uint8_t flags; uint8_t pad[3]; int id; int size; } CB;
 static void SurCallback(int id, const uint8_t *d)
 {
     switch (id) {
-    case 333:   /* GameLobbyJoinRequested : salon, ami */
+    case 333:
         if (g_inviteRetry) { g_inviteLobby = *(const uint64_t *)d; g_inviteTick = GetTickCount(); g_inviteTries = 0; }
         break;
-    case 505:   /* LobbyDataUpdate : donnees du salon recues */
+    case 505:
         if (g_inviteLobby && *(const uint64_t *)d == g_inviteLobby) {
             Note("invitation_donnees_recues relances", g_inviteTries, 0);
             g_inviteLobby = 0;
         }
         break;
-    case 504: { /* LobbyEnter : salon, ..., reponse (+16, 1 = ok) */
+    case 504: {
         const CSteamID lobby = *(const uint64_t *)d;
         if (*(const uint32_t *)(d + 16) == 1) g_lobby = lobby;
         if (g_inviteLobby == lobby) g_inviteLobby = 0;
         break; }
-    case 513:   /* LobbyCreated : resultat (1 = ok), salon (+8) */
+    case 513:
         if (*(const int *)d == 1) g_lobby = *(const uint64_t *)(d + 8);
         break;
     }
@@ -109,7 +75,6 @@ static const int CB_IDS[][2] = { {333, 16}, {504, 24}, {505, 24}, {513, 16} };
 static CB g_cbs[NCB];
 typedef void (__cdecl *RegisterCallback_t)(CB *cb, int id);
 
-/* ---- KeyFix : ISteamMatchmaking::SetLobbyData ------------------------------------------------ */
 typedef uint8_t (__thiscall *SetLobbyData_t)(void *self, CSteamID lobby, const char *key, const char *value);
 static SetLobbyData_t o_setLobbyData;
 static int RemplacerZeros(uint8_t *k, int n)
@@ -127,7 +92,7 @@ static uint8_t __thiscall hk_setLobbyData(void *self, CSteamID lobby, const char
             uint8_t *k = ctx + (seed ? 0x1C : 0x2C);
             const int n = seed ? 16 : 8;
             const size_t lv = strlen(value);
-            /* la valeur publiee doit etre la copie (eventuellement coupee) de la cle du jeu : sinon on n'y touche pas */
+
             if (!memcmp(value, k, lv < (size_t)n ? lv : (size_t)n)) {
                 const int f = RemplacerZeros(k, n);
                 if (f) { memcpy((void *)value, k, n); Note("keyfix_corrige cle(1=seed,2=sig)/octets", seed ? 1 : 2, f); }
@@ -137,7 +102,6 @@ static uint8_t __thiscall hk_setLobbyData(void *self, CSteamID lobby, const char
     return o_setLobbyData(self, lobby, key, value);
 }
 
-/* ---- F7 : lien steam://joinlobby du salon courant -> presse-papiers -------------------------- */
 static int CopierTexte(const char *t)
 {
     const size_t n = strlen(t) + 1;
@@ -164,7 +128,7 @@ static int JeuAuPremierPlan(void)
 static void CopierLien(void)
 {
     const CSteamID lobby = g_lobby;
-    /* GetNumLobbyMembers vaut 0 si l'on n'est plus dans ce salon */
+
     const int n = (g_mm && lobby) ? ((GetNumLobbyMembers_t)VtMM()[MM_GET_NUM_MEMBERS])(g_mm, lobby) : 0;
     CSteamID hote = 0;
     if (n > 0) ((GetLobbyOwner_t)VtMM()[MM_GET_OWNER])(g_mm, &hote, lobby);
@@ -177,10 +141,9 @@ static void CopierLien(void)
     Note("lien_copie ok", ok, 0);
 }
 
-/* ---- tic sur le thread du jeu : SteamAPI_RunCallbacks ----------------------------------------- */
-static void Tic(void)                       /* appele par le tic commun (doa5tools.c) */
+static void Tic(void)
 {
-    if (g_copyKey) {                         /* front montant de la touche, fenetre du jeu au premier plan */
+    if (g_copyKey) {
         static int avant;
         const int bas = (GetAsyncKeyState(g_copyKey) & 0x8000) != 0;
         if (bas && !avant && JeuAuPremierPlan()) CopierLien();

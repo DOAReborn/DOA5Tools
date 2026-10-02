@@ -1,27 +1,3 @@
-/*  DOA5LR-60fps 1.0 (01/10/2026) - menus, intros, poses de victoire et cinematiques du mode Histoire a 60 fps.
- *
- *  Reprise minimale de 60fps-menus 0.13c (projet DOA5Tools) : meme comportement, code mort et diagnostics retires.
- *  Cible : game.exe 1.10C + AutoLink 3.30 (dinput8Hooked.dll). HORS LIGNE SEULEMENT : tout est coupe des qu'une
- *  session en ligne ou un lecteur en ligne existe (0.13b : desynchros et erreurs reseau en salon).
- *
- *  Principe : AutoLink demande au jeu le mode 30 fps (setter natif 423330) pour certaines scenes et compense avec son
- *  facteur de vitesse. Dans les seuls contextes reconnus ci-dessous, on demande 60 fps (mode 0) et on divise ce
- *  facteur par 2 ; tout est rendu des que le contexte disparait. Tables de temps et code de combat non modifies.
- *   - Menus : selection des persos (GUI 4), du stage (5) et menu principal (9), instance visible et active.
- *   - Intros (GUI -1) : intros de combat hors ligne mesurees (persos/animations verifiees).
- *   - Histoire : cinematiques RealTimeMovie hors ligne, acteurs immobiles ou pilotes par la scene.
- *   - Poses de victoire hors ligne (GUI 0, aucun lecteur en ligne, AutoLink demande 30 fps).
- *
- *  Crochets (pointeurs, verifies avant pose, retires en bloc si l'un echoue) : pointeur du setter dans AutoLink,
- *  entree 3 et destructeur des trois menus, entrees 1/2/4 de RealTimeMovie.
- *  DOA5LR-60fps.ini, section [60fps] : Menus, Intros, WinPoses, Story (1 = actif). Relu en continu.
- *  Retire depuis 0.13c : journal, traces d'intro, chemins en ligne inactifs (GUI 0 spectateur, poses "source30",
- *  lecteur en ligne et sa verification), option MatchContext (sans effet sans ces chemins).
- *
- *  Compilation (LLVM-MinGW, 32 bits) :
- *    i686-w64-mingw32-gcc -O2 -s -shared -static -Wall -o DOA5LR-60fps.asi fps60.c
- */
-/*  Version integree a DOA5Tools : reglages [60fps] de DOA5Tools.ini ; sans AutoLink, ne fait rien. */
 #include <windows.h>
 #include <stdint.h>
 #include <string.h>
@@ -40,11 +16,10 @@ static volatile LONG intro_enabled, intro_active, win_enabled, story_enabled;
 static BYTE *intro_blocked;
 static int upstream_mode;
 static BOOL refreshing;
-/* globaux (non static) : utilises par les crochets en assembleur */
+
 void *menu_original, *main_delete_original, *select_delete_original, *stage_delete_original;
 void *movie_begin_original, *movie_update_original, *movie_end_original;
 
-/* seule la fonction de rafraichissement du jeu recalcule les valeurs de temps derivees */
 static void refresh_timing(void)
 {
     if (refreshing) return;
@@ -63,7 +38,6 @@ static BOOL equal(const void *p, const void *expected, SIZE_T n)
 }
 static DWORD u32(const BYTE *p) { DWORD v; memcpy(&v, p, 4); return v; }
 
-/* facteur de vitesse d'AutoLink (albase+0xbd634) et echelle du jeu (base+0xdd8fbc) */
 static void release_scale(void)
 {
     if (!scale_owned) return;
@@ -82,13 +56,11 @@ static void apply_scale(void)
     *fps = written_fps_factor; *scale = written_scale; scale_owned = TRUE;
 }
 
-/* session en ligne : lecteur en ligne (base+0xf8f208) ou etat Online::Matching (base+0xf81898+4) */
 static BOOL online_session(void)
 {
     return *(DWORD *)(base + 0xf8f208) != 0 || *(DWORD *)(base + 0xf81898 + 4) != 0;
 }
 
-/* menu : instance vivante et visible d'un des trois menus verifies */
 static BOOL eligible(BYTE *object)
 {
     BYTE header[0x6c];
@@ -102,7 +74,6 @@ static BOOL eligible(BYTE *object)
            *(DWORD *)(base + 0xf8a7ac) == id && *(DWORD *)(base + 0xfce5cc) == 0;
 }
 
-/* RealTimeMovie active (phase 3 a 7, objet courant de type RealTimeMovie, actif) */
 static BOOL movie_running(void)
 {
     const DWORD phase = *(DWORD *)(base + 0xfce5cc);
@@ -111,7 +82,6 @@ static BOOL movie_running(void)
            u32(header) == (DWORD)(base + 0x9b932c) && header[4] == 1;
 }
 
-/* intros de combat hors ligne (GUI -1) : persos et animations mesures en 0.7.1 */
 static BOOL intro_eligible(void)
 {
     if (!intro_enabled || *(DWORD *)(base + 0xf8a7ac) != 0xffffffff || *(DWORD *)(base + 0xf8f208) != 0) return FALSE;
@@ -128,8 +98,6 @@ static BOOL intro_eligible(void)
     return FALSE;
 }
 
-/* cinematiques du mode Histoire (hors ligne) : hors menus geres et ecran de resultat ; sous GUI 0 ou -1,
- * acteurs immobiles (action 0) ou pilotes par la scene (0x118). Combats, degats et poses gardent leurs actions. */
 static BOOL story_eligible(void)
 {
     if (!story_enabled || upstream_mode != 1 || *(DWORD *)(albase + 0xffff0) != 1) return FALSE;
@@ -145,8 +113,6 @@ static BOOL story_eligible(void)
     return movie_running();
 }
 
-/* poses de victoire hors ligne : GUI 0, aucun lecteur en ligne, AutoLink demande 30 fps (le combat et le ralenti
- * du KO restent en mode 0) */
 static BOOL win_eligible(void)
 {
     if (!win_enabled || upstream_mode != 1 || *(DWORD *)(albase + 0xffff0) != 1) return FALSE;
@@ -169,11 +135,9 @@ static void release_intro(void)
     refresh_timing();
 }
 
-/* AutoLink garde son propre mode demande : on ne filtre que ce qui part vers le setter du jeu, sa prochaine
- * demande hors contexte retablit donc le comportement normal. */
 static void __cdecl filtered_set(int mode)
 {
-    /* AutoLink ecrit son facteur et son echelle juste avant cet appel : ils remplacent nos valeurs */
+
     const BOOL was_intro = intro_active;
     scale_owned = FALSE; upstream_mode = mode;
     const BOOL want_menu = enabled && mode == 1 && (DWORD)(GetTickCount() - last_tick) <= 100 && eligible(tracked);
@@ -192,7 +156,7 @@ static void release_menu(void)
     if (intro_active) return;
     release_scale();
     if (InterlockedExchange(&forced, 0)) {
-        const DWORD cached = *(DWORD *)(albase + 0xffff0);   /* mode retenu par AutoLink, jamais modifie */
+        const DWORD cached = *(DWORD *)(albase + 0xffff0);
         if (cached <= 4 && *(DWORD *)(base + 0x108b488) == 0) native_set((int)cached);
     }
 }
@@ -202,7 +166,7 @@ void __cdecl menu_before(BYTE *object)
     if (eligible(object)) {
         tracked = object; last_tick = GetTickCount();
         const DWORD requested = *(DWORD *)(albase + 0xffff0);
-        release_scale();                                    /* evite la derive 0.5 -> 0.25 -> ... */
+        release_scale();
         if (requested <= 4) {
             const BOOL want = enabled && requested == 1;
             if (want) apply_scale();
@@ -229,8 +193,6 @@ void __cdecl movie_leaving(BYTE *object)
     release_intro();
 }
 
-/* Conserve l'ABI thiscall d'origine (arguments, valeur de retour, drapeaux, x87/SSE, registres). Les fonctions
- * d'aide s'executent AVANT la fonction du jeu : les transitions du jeu ont le dernier mot. */
 #define BEFORE_HELPER(helper, target) \
     __asm__ volatile("pushfl\n pushal\n mov %esp,%ebp\n sub $544,%esp\n and $-16,%esp\n" \
         "fxsave 16(%esp)\n mov %ecx,(%esp)\n call _" helper "\n fxrstor 16(%esp)\n" \
@@ -255,7 +217,6 @@ static BOOL exchange(Hook *h, BOOL install)
     return previous == expected;
 }
 
-/* signatures du jeu et d'AutoLink 3.30 : rien n'est pose si l'une differe */
 static BOOL signatures(void)
 {
     const DWORD table[15] = {1, 1, 1, 2, 1, 2, 3, 1, 3, 1, 1, 1, 2, 2, 1};
@@ -295,7 +256,7 @@ static DWORD WINAPI worker(void *unused)
         ready = albase && signatures();
         if (!ready) Sleep(100);
     }
-    if (!ready) return 0;                                   /* AutoLink absent ou autre version : rien n'est fait */
+    if (!ready) return 0;
     native_set = (void (__cdecl *)(int))(base + 0x423330);
     native_refresh = (void (__cdecl *)(void))(base + 0x3f5480);
     movie_begin_original = base + 0x321e70; movie_update_original = base + 0x320250; movie_end_original = base + 0x321030;
@@ -316,17 +277,17 @@ static DWORD WINAPI worker(void *unused)
         {(void **)(base + 0x9b932c + 16), movie_end_original, (void *)movie_end_hook}
     };
     const unsigned count = sizeof hooks / sizeof hooks[0];
-    for (unsigned n = 0; n < count; n++) if (!equal(hooks[n].slot, &hooks[n].original, 4)) return 0;   /* deja modifie */
+    for (unsigned n = 0; n < count; n++) if (!equal(hooks[n].slot, &hooks[n].original, 4)) return 0;
     unsigned installed = 0;
     while (installed < count && exchange(&hooks[installed], TRUE)) installed++;
     if (installed != count) { while (installed) exchange(&hooks[--installed], FALSE); return 0; }
-    for (;;) { Sleep(1000); read_settings(); }              /* .ini modifiable jeu ouvert */
+    for (;;) { Sleep(1000); read_settings(); }
 }
 
 void Fps60_Demarrer(void)
 {
     base = (BYTE *)GetModuleHandleW(NULL);
-    MultiByteToWideChar(CP_ACP, 0, CheminIni(), -1, ini, MAX_PATH);   /* DOA5Tools.ini, section [60fps] */
+    MultiByteToWideChar(CP_ACP, 0, CheminIni(), -1, ini, MAX_PATH);
     HANDLE h = CreateThread(NULL, 0, worker, NULL, 0, NULL);
     if (h) CloseHandle(h);
 }

@@ -1,31 +1,10 @@
-/*  DOA5LR-Borderless 2.0 (01/10/2026) - plein ecran sans bordures, sans passer par les options du jeu.
- *
- *  Reprise minimale de Borderless 1.1 (projet DOA5Tools). Aucun crochet dans le jeu : on attend la fenetre
- *  principale du processus, on retire cadre et barre de titre, et on la cale sur son moniteur (re-applique si
- *  le jeu recree ou redimensionne sa fenetre).
- *
- *  DOA5LR-Borderless.ini, section [Borderless] :
- *   Mode=2      : sans bordures (defaut). Au lancement, SCREEN_TYPE=WINDOW est impose dans le reglage du jeu
- *                 (Documents\KoeiTecmo\DOA5LR\DOA5LR.ini) AVANT que le jeu ne le lise, puis les bordures sont retirees.
- *   Mode=1      : fenetre classique imposee (WINDOW, bordures conservees).
- *   Mode=0      : le module ne touche a rien (reglage du jeu).
- *   ToggleKey=F11 (0 = aucune) : en jeu, Sans bordures (1 bip) -> Fenetre (2 bips) -> Plein ecran (3 bips,
- *                 applique au prochain lancement) -> ... ; le mode choisi est enregistre dans ce .ini.
- *
- *  Fichiers : lit et ecrit ce .ini et, pour la seule cle SCREEN_TYPE, DOA5LR.ini du jeu. Rien d'autre.
- *  Retire depuis 1.1 : journal, bandeau a l'ecran (les bips restent), option de test IniPath.
- *
- *  Compilation (LLVM-MinGW, 32 bits) :
- *    i686-w64-mingw32-gcc -O2 -s -shared -static -Wall -o DOA5LR-Borderless.asi borderless.c -lshell32
- */
-/*  Version integree a DOA5Tools : reglages [Borderless] de DOA5Tools.ini (Mode y est enregistre). */
 #include <windows.h>
 #include <shlobj.h>
 #include <string.h>
 #include "commun.h"
 
 static HWND g_hwnd;
-static int g_mode = 2;                     /* 0 = inactif, 1 = fenetre, 2 = sans bordures */
+static int g_mode = 2;
 static int g_toggleKey = VK_F11;
 static WCHAR g_pluginIni[MAX_PATH], g_gameIni[MAX_PATH];
 static LONG g_origStyle, g_origEx;
@@ -35,7 +14,6 @@ static int g_origSaved;
 static const LONG kStrip   = WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_BORDER | WS_DLGFRAME;
 static const LONG kStripEx = WS_EX_CLIENTEDGE | WS_EX_DLGMODALFRAME | WS_EX_STATICEDGE | WS_EX_WINDOWEDGE;
 
-/* fenetre principale du jeu : visible, sans parent, pas une fenetre outil, au moins 320 x 240 */
 static BOOL CALLBACK TrouverFenetre(HWND h, LPARAM lp)
 {
     DWORD pid = 0;
@@ -66,7 +44,7 @@ static void SansBordures(HWND h)
     SetWindowPos(h, NULL, voulu.left, voulu.top, voulu.right - voulu.left, voulu.bottom - voulu.top,
                  SWP_FRAMECHANGED | SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
 }
-static void RemettreBordures(HWND h)       /* fenetre classique, taille d'origine */
+static void RemettreBordures(HWND h)
 {
     if (!h || !g_origSaved) return;
     SetWindowLongW(h, GWL_STYLE, g_origStyle | WS_VISIBLE);
@@ -76,8 +54,6 @@ static void RemettreBordures(HWND h)       /* fenetre classique, taille d'origin
                  SWP_FRAMECHANGED | SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
 }
 
-/* Remplace la valeur de SCREEN_TYPE= dans DOA5LR.ini (ANSI ou UTF-16 LE, fins de ligne conservees).
- * Rien d'autre n'est modifie ; abandon si le fichier contient des caracteres hors Latin-1 (UTF-16). */
 static void ImposerTypeEcran(const WCHAR *ini, const char *valeur)
 {
     HANDLE h = CreateFileW(ini, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
@@ -95,7 +71,7 @@ static void ImposerTypeEcran(const WCHAR *ini, const char *valeur)
     if (large) {
         n = (lu - 2) / 2;
         for (DWORD i = 0; i < n; i++) {
-            if (brut[3 + 2 * i]) goto fin;                       /* caractere hors Latin-1 : on ne touche a rien */
+            if (brut[3 + 2 * i]) goto fin;
             txt[i] = (char)brut[2 + 2 * i];
         }
     } else { n = lu; memcpy(txt, brut, n); }
@@ -105,7 +81,7 @@ static void ImposerTypeEcran(const WCHAR *ini, const char *valeur)
     char *v = k + 12, *e = v;
     while (*e && *e != '\r' && *e != '\n') e++;
     const size_t lv = strlen(valeur);
-    if ((size_t)(e - v) == lv && !memcmp(v, valeur, lv)) goto fin;   /* deja bon */
+    if ((size_t)(e - v) == lv && !memcmp(v, valeur, lv)) goto fin;
     const DWORD n2 = (DWORD)((v - txt) + lv + strlen(e));
     sortie = (char *)HeapAlloc(tas, 0, n2 + 1);
     if (!sortie) goto fin;
@@ -131,7 +107,7 @@ fin:
 
 static void LireReglages(void)
 {
-    MultiByteToWideChar(CP_ACP, 0, CheminIni(), -1, g_pluginIni, MAX_PATH);   /* DOA5Tools.ini */
+    MultiByteToWideChar(CP_ACP, 0, CheminIni(), -1, g_pluginIni, MAX_PATH);
     g_mode = GetPrivateProfileIntW(L"Borderless", L"Mode", 2, g_pluginIni);
     if (g_mode < 0 || g_mode > 2) g_mode = 2;
     WCHAR touche[16];
@@ -182,7 +158,7 @@ static DWORD WINAPI Boucle(LPVOID p)
 void Borderless_Demarrer(void)
 {
     LireReglages();
-    if (g_mode >= 1 && g_gameIni[0]) ImposerTypeEcran(g_gameIni, "WINDOW");   /* avant que le jeu ne le lise */
+    if (g_mode >= 1 && g_gameIni[0]) ImposerTypeEcran(g_gameIni, "WINDOW");
     HANDLE t = CreateThread(NULL, 0, Boucle, NULL, 0, NULL);
     if (t) CloseHandle(t);
 }
