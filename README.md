@@ -8,8 +8,17 @@ A single ASI plugin for **Dead or Alive 5 Last Round** that brings back lobbies 
 2. Extract the zip next to `game.exe`:
    - `dinput8.dll`: ASI Loader
    - `DOA5Tools.asi` + `DOA5Tools.ini`
-3. (only for linux players) add a custom launch option in steam: WINEDLLOVERRIDES="dinput8=n,b" %command% 
-4. Launch the game.
+3. Launch the game.
+
+### Linux / Steam Deck (Proton)
+
+Follow the steps above, then in Steam: right-click the game → **Properties** → **General** → **Launch options**, and paste:
+
+```
+WINEDLLOVERRIDES="dinput8=n,b" %command%
+```
+
+### Notes
 
 Fully compatible with AutoLink if you're into that.
 You can disable any feature by setting its value to 0 in the .ini file.
