@@ -1,4 +1,3 @@
-// Bascule EN/FR : le choix est gardé dans le navigateur (localStorage), rien n'est envoyé.
 (function () {
   var html = document.documentElement;
   var choix = localStorage.getItem("langue") ||

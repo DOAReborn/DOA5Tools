@@ -4,16 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DOA5Tools – Guide</title>
-<meta name="description" content="A single ASI plugin for Dead or Alive 5 Last Round: lobbies, rematch, borderless, ultrawide and more.">
+<meta name="description" content="A single ASI plugin for Dead or Alive 5 Last Round: lobbies, chat, rematch, borderless, ultrawide and more.">
 <link rel="stylesheet" href="style.css">
+<link rel="icon" href="reborn.svg" type="image/svg+xml">
 <script src="lang.js"></script>
+<script src="site.js" defer></script>
 </head>
 <body>
 <nav>
-  <a class="logo" href="index.html">DOA5<span>Tools</span></a>
+  <a class="retour" href="/" title="DOA Reborn"><img src="reborn.svg" alt="DOA Reborn" width="28" height="28"></a>
+  <a class="marque" href="index.html"><span class="mot">D<span class="o">O</span>A5<span class="acc">Tools</span></span></a>
   <a href="infos.html" class="actif"><span class="en">Guide</span><span class="fr">Guide</span></a>
   <a href="planned.html"><span class="en">Planned</span><span class="fr">À venir</span></a>
-  <a href="https://github.com/DOAReborn/DOA5Tools/releases/latest/download/DOA5Tools.zip"><span class="en">Download</span><span class="fr">Télécharger</span></a>
+  <a class="telecharger" href="https://github.com/DOAReborn/DOA5Tools/releases/latest/download/DOA5Tools.zip"><span class="en">Download</span><span class="fr">Télécharger</span></a>
   <button id="langue" type="button" title="EN / FR"><span class="en">FR</span><span class="fr">EN</span></button>
 </nav>
 <header class="bandeau">
@@ -29,10 +32,12 @@
   <ul class="en">
     <li>Adds the missing <strong>Lobby</strong> entry to the Online menu, with pretty much every feature available.</li>
     <li>Working invitations. Press <code>F7</code> in a lobby to copy your room link to the clipboard.</li>
+    <li>Text chat: <code>Enter</code> (keyboard) or <code>Start</code> (controller) in a lobby. Everyone in the lobby needs DOA5Tools 1.2 or later.</li>
   </ul>
   <ul class="fr">
     <li>Ajoute l’entrée <strong>Salon</strong> manquante au menu En ligne, avec presque toutes ses fonctions.</li>
     <li>Invitations fonctionnelles. <code>F7</code> dans un salon copie le lien du salon dans le presse-papiers.</li>
+    <li>Chat texte : <code>Entrée</code> (clavier) ou <code>Start</code> (manette) dans un salon. Tout le salon doit avoir DOA5Tools 1.2 ou plus récent.</li>
   </ul>
   <h3>Rematch</h3>
   <ul class="en">
@@ -50,7 +55,7 @@
     <li>Shows your real connection type to others: <code>[n]</code> wired, <code>&lt;n&gt;</code> Wi-Fi.</li>
     <li>Borderless fullscreen (<code>F11</code> cycles between modes).</li>
     <li>Skips the startup logos and intro.</li>
-    <li>Ultrawide and other non-16:9 screens (21:9, 32:9, 16:10…).</li>
+    <li>Runs at your desktop resolution, ultrawide and other screens included (21:9, 32:9, 16:10…).</li>
     <li>60 FPS in menus and offline modes (requires AutoLink).</li>
     <li>Replay list in rows (names, characters, stage, date), filters by character (L1) and player (R1), archives (Square).</li>
   </ul>
@@ -58,7 +63,7 @@
     <li>Affiche aux autres votre vrai type de connexion : <code>[n]</code> filaire, <code>&lt;n&gt;</code> Wi-Fi.</li>
     <li>Plein écran fenêtré (<code>F11</code> passe d’un mode à l’autre).</li>
     <li>Passe les logos et l’intro au démarrage.</li>
-    <li>Écrans ultrawide et autres formats que le 16:9 (21:9, 32:9, 16:10…).</li>
+    <li>Tourne à la résolution du bureau, écrans ultrawide et autres formats compris (21:9, 32:9, 16:10…).</li>
     <li>60 FPS dans les menus et les modes hors ligne (nécessite AutoLink).</li>
     <li>Liste des replays en lignes (pseudos, persos, stage, date), filtres par perso (L1) et par joueur (R1), archives (Carré).</li>
   </ul>
@@ -100,19 +105,20 @@ Borderless=1
 60fps=1
 Skip=1
 Ultrawide=1
-ReplayMenu=1</code></pre>
+ReplayMenu=1
+LobbyChat=1</code></pre>
   <ul class="en">
     <li>F7 in a lobby copies your room link.</li>
     <li><code>[Rematch] Tirage</code>: random characters/stage on rematch, <code>1</code> = new draw, <code>0</code> = same as last fight.</li>
     <li><code>[Borderless] Mode</code>: <code>2</code> borderless, <code>1</code> window, <code>0</code> game setting. F11 cycles the modes.</li>
-    <li><code>[Ultrawide] Width</code>/<code>Height</code>: <code>0</code> = your desktop resolution. Does nothing on a 16:9 screen unless set.</li>
+    <li><code>[Ultrawide] Width</code>/<code>Height</code>: <code>0</code> = your desktop resolution.</li>
     <li><code>[ReplayMenu] Recycle</code>: <code>1</code> = deleted replays go to a <code>REPLY_CORBEILLE</code> folder, <code>0</code> = erased for good.</li>
   </ul>
   <ul class="fr">
     <li>F7 dans un salon copie le lien du salon.</li>
     <li><code>[Rematch] Tirage</code> : personnages/stage aléatoires au rematch, <code>1</code> = nouveau tirage, <code>0</code> = comme au combat précédent.</li>
     <li><code>[Borderless] Mode</code> : <code>2</code> plein écran fenêtré, <code>1</code> fenêtre, <code>0</code> réglage du jeu. F11 fait défiler les modes.</li>
-    <li><code>[Ultrawide] Width</code>/<code>Height</code> : <code>0</code> = résolution du bureau. Sans effet sur un écran 16:9 sauf si renseignés.</li>
+    <li><code>[Ultrawide] Width</code>/<code>Height</code> : <code>0</code> = résolution du bureau.</li>
     <li><code>[ReplayMenu] Recycle</code> : <code>1</code> = les replays supprimés vont dans un dossier <code>REPLY_CORBEILLE</code>, <code>0</code> = effacés pour de bon.</li>
   </ul>
 </section>
@@ -123,8 +129,8 @@ ReplayMenu=1</code></pre>
   <p class="en">Check that <code>dinput8.dll</code> and <code>DOA5Tools.asi</code> are next to <code>game.exe</code>. On Linux, check the launch option above.</p>
   <p class="fr">Vérifier que <code>dinput8.dll</code> et <code>DOA5Tools.asi</code> sont à côté de <code>game.exe</code>. Sous Linux, vérifier l’option de lancement ci-dessus.</p>
   <h3 class="en">Do both players need the plugin?</h3><h3 class="fr">Les deux joueurs doivent-ils avoir le plugin ?</h3>
-  <p class="en">For Rematch, yes: both players in the queue need DOA5Tools.</p>
-  <p class="fr">Pour le rematch, oui : les deux joueurs de la file doivent avoir DOA5Tools.</p>
+  <p class="en">For Rematch, both players in the queue need DOA5Tools. For chat, everyone in the lobby.</p>
+  <p class="fr">Pour le rematch, les deux joueurs de la file doivent avoir DOA5Tools. Pour le chat, tout le salon.</p>
   <h3 class="en">Does it modify game files?</h3><h3 class="fr">Est-ce que ça modifie les fichiers du jeu ?</h3>
   <p class="en">No. Everything happens in memory while the game runs. Deleting the files restores the original game.</p>
   <p class="fr">Non. Tout se passe en mémoire pendant que le jeu tourne. Supprimer les fichiers rend le jeu d’origine.</p>

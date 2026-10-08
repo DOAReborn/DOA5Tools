@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="p" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd9e5"/>
+      <stop offset=".5" stop-color="#e0457b"/>
+      <stop offset="1" stop-color="#5a1230"/>
+    </linearGradient>
+    <path id="f" d="M50 50C41 44 35 34 36 23C37 15 42 10 47 11L50 16L53 11C58 10 63 15 64 23C65 34 59 44 50 50Z"/>
+    <g id="fleur"><use href="#f"/><use href="#f" transform="rotate(72 50 50)"/><use href="#f" transform="rotate(144 50 50)"/><use href="#f" transform="rotate(216 50 50)"/><use href="#f" transform="rotate(288 50 50)"/></g>
+  </defs>
+  <g transform="rotate(-12 50 50) translate(0 3)">
+    <use href="#fleur" fill="none" stroke="#0d1c26" stroke-width="7" stroke-linejoin="round"/>
+    <use href="#fleur" fill="url(#p)" stroke="#eef4f8" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="50" cy="50" r="6" fill="#fff4f8" stroke="#0d1c26" stroke-width="1.5"/>
+    <circle cx="50" cy="50" r="2.4" fill="#e0457b"/>
+  </g>
+</svg>
