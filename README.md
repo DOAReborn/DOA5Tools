@@ -28,10 +28,11 @@ To uninstall, simply delete these files.
 
 **Lobby**
 - Adds the missing **Lobby** entry to the Online menu with pretty much every feature available.
-- Working invitation system.
+- Working invitation system, you can also press F7 in a lobby to get your room link copied to your clipboard.
+- Text chat: Enter (keyboard) or Start (controller) in a lobby. Everyone in the lobby needs DOA5Tools 1.2 or later.
 
 **Rematch**
-- Rematch available at the end of a match if only two players are in the lobby queue.
+- If there are only two players queuing in a lobby, the game will automatically show a "rematch" menu at the end of a fight that allows you to play again, right away.
 - If one player leaves the menu, or a third player joins the queue, the room goes back to normal.
 - Spectators can watch rematches by using spectator mode in lobbies (use the built-in option in the lobby, do not queue).
 
@@ -39,23 +40,20 @@ To uninstall, simply delete these files.
 - Shows your real connection type to the others: `[n]` wired, `<n>` Wi-Fi.
 - Borderless fullscreen integration (press F11 to cycle between modes).
 - Skips the startup logos and intro.
-- Ultrawide fixes for unconventional aspect ratios (21:9, 32:9).
+- Runs at your desktop resolution, with ultrawide fixes for unconventional aspect ratios (21:9, 32:9).
 - 60FPS mode, menus and offline mode only. Doesn't work without AutoLink.
-- Reworked replay menu, showing actual information. You can filter by character, player, and archive your favorite replays.
+- Replay list in rows, with filters by character (L1) and player (R1), and archives (Square).
 
 ## Build
 
 32-bit, with [LLVM-MinGW](https://github.com/mstorsjo/llvm-mingw) (Windows or Linux). From `src/`:
 
 ```
-i686-w64-mingw32-gcc -O2 -s -shared -static -Wall -DDOA5TOOLS -o DOA5Tools.asi doa5tools.c lobby.c joinfix.c rematch.c wifiwired.c borderless.c fps60.c skip.c ultrawide.c replaymenu.c -liphlpapi -lshell32 -ld3d9 -lgdi32
+i686-w64-mingw32-gcc -O2 -s -shared -static -Wall -DDOA5TOOLS -o DOA5Tools.asi doa5tools.c lobby.c joinfix.c rematch.c wifiwired.c borderless.c fps60.c skip.c ultrawide.c replaymenu.c lobbychat.c -liphlpapi -lshell32 -ld3d9 -lgdi32
 ```
 
 ## Credits
 
-
-**DOA5Tools** by **FGCsnow**, **BonuStage**, **Buraiden/ice** and **Hajin'**, a **DOAReborn** project.
-
-Third-party:
 - Ultrawide is a C port of [DOA5LRFix](https://codeberg.org/Lyall/DOA5LRFix) by **Lyall** (MIT, see `third-party/`).
 - [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader) by **ThirteenAG** (MIT, see `third-party/`).
+- Lobby, JoinFix, WiFi-Wired, Borderless and 60fps are reworked from the DOA5LR-Salons pack (FGCsnow & BonuStage).
