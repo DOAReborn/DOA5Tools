@@ -4,7 +4,7 @@
 #include <string.h>
 #include "commun.h"
 
-#define VERSION_DOA5TOOLS "1.1"
+#define VERSION_DOA5TOOLS "1.2"
 
 static char g_ini[MAX_PATH];
 const char *CheminIni(void) { return g_ini; }
@@ -27,7 +27,7 @@ void Journal(const char *module, const char *libelle, long a, long b, long c)
 #define RVA_IAT_RUNCALLBACKS 0x9663DC
 #define RVA_KTOL_PRINTF      0x846010
 static const uint8_t KTOL_PRINTF_BYTES[] = {0x55, 0x8B, 0xEC, 0x81, 0xEC, 0x04, 0x02, 0x00, 0x00};
-#define NB_TICS 4
+#define NB_TICS 8
 static Tic_t g_tics[NB_TICS];
 static volatile LONG g_nbTics;
 void AjouterTic(Tic_t f)
@@ -91,6 +91,7 @@ BOOL WINAPI DllMain(HINSTANCE h, DWORD raison, LPVOID r)
     if (Reglage("DOA5Tools", "WiFiWired", 1)) WiFiWired_Demarrer();
     if (Reglage("DOA5Tools", "60fps", 1)) Fps60_Demarrer();
     if (Reglage("DOA5Tools", "ReplayMenu", 1)) ReplayMenu_Demarrer();
+    if (Reglage("DOA5Tools", "LobbyChat", 1)) LobbyChat_Demarrer();
     if (g_nbTics) {
         HANDLE t = CreateThread(NULL, 0, PoserTic, NULL, 0, NULL);
         if (t) CloseHandle(t);

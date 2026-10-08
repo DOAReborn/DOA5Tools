@@ -328,9 +328,17 @@ static void __cdecl SurJonction(uint32_t *r)
 {
     const uintptr_t p = r[9];
     if (!g_invEnCours || p <= 0x10000) return;
-    *(volatile CSteamID *)(p + 8) = g_invSalon;
+
+    const uintptr_t fiche = LirePointeur(p);
+    CSteamID avant = 0;
+    if (!fiche || !Lire((void *)(fiche + 8), &avant, 8)) {
+        InterlockedExchange(&g_invEnCours, 0);
+        Note("jonction_fiche_illisible", 0);
+        return;
+    }
+    if (avant != g_invSalon) *(volatile CSteamID *)(fiche + 8) = g_invSalon;
     InterlockedExchange(&g_invEnCours, 0);
-    Note("jonction_vers_salon_invite", 1);
+    Note("jonction_vers_salon_invite deja_le_bon_salon", avant == g_invSalon);
 }
 
 static volatile LONG g_typeSalon = -1;

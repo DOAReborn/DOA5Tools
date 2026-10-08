@@ -167,11 +167,6 @@ static DWORD WINAPI Installer(LPVOID p)
         memset(&dm, 0, sizeof dm);
         dm.dmSize = sizeof dm;
         if (EnumDisplaySettingsW(NULL, ENUM_CURRENT_SETTINGS, &dm)) { g_resX = (int)dm.dmPelsWidth; g_resY = (int)dm.dmPelsHeight; }
-
-        if (g_resX > 0 && g_resY > 0) {
-            const float a = (float)g_resX / (float)g_resY;
-            if (a > NATIF - 0.01f && a < NATIF + 0.01f) { Note("ecran_16_9 -> inactif", 0, 0); return 0; }
-        }
     }
     if (g_customRes) {
         if (g_resX <= 0 || g_resY <= 0) g_customRes = 0;

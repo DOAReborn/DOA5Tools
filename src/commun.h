@@ -20,5 +20,6 @@ void Fps60_Demarrer(void);
 void Skip_Demarrer(void);
 void Ultrawide_Demarrer(void);
 void ReplayMenu_Demarrer(void);
+void LobbyChat_Demarrer(void);
 
 #endif
