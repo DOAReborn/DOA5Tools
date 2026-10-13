@@ -106,7 +106,11 @@ static int ModeRematch(void)
 {
     if (!g_actif || !EnSalon() || NbJoueurs() != 2) return 0;
     const uint32_t regle = *(volatile uint32_t *)(g_base + RVA_REGLE_ROTATION);
-    return regle == 0 || regle == 1 || regle == 5;
+    if (regle != 0 && regle != 1 && regle != 5) return 0;
+    const int marque = Marque_TousDOA5Tools();
+    static int dernier = -1;
+    if (marque != dernier) { Note("autre_joueur_doa5tools", marque, 0, 0); dernier = marque; }
+    return marque;
 }
 
 static int RematchDecide(void)

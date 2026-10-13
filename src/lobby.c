@@ -105,6 +105,26 @@ static MenuFn g_initCopie;
 static const DWORD LIBELLES[3] = {0xA30004, 0xA30001, 0xA30003};
 static unsigned char g_ressource[0x200];
 static void Poser32(unsigned char *p, DWORD v) { memcpy(p, &v, 4); }
+static DWORD Fnv1a(const unsigned char *p, size_t n)
+{
+    DWORD h = 0x811C9DC5u;
+    for (size_t i = 0; i < n; i++) { h ^= p[i]; h *= 0x01000193u; }
+    return h;
+}
+
+static int g_ressourcePrete;
+static void PreparerRessource(const unsigned char *origine)
+{
+    memcpy(g_ressource, origine, MENU_RESSOURCE_TAILLE);
+    Poser32(g_ressource + 0x28, 3); Poser32(g_ressource + 0x2C, 0x160); Poser32(g_ressource + 0x30, 3);
+    Poser32(g_ressource + 0x34, 0x1A8); Poser32(g_ressource + 0x98, 3);
+    memcpy(g_ressource + 0x160, g_ressource + 0xA0, 48); memcpy(g_ressource + 0x190, g_ressource + 0xB8, 24);
+    Poser32(g_ressource + 0x194, 0x121); Poser32(g_ressource + 0x19C, 2); Poser32(g_ressource + 0x1A0, 0x3A8);
+    memcpy(g_ressource + 0x1A8, g_ressource + 0xE0, 32);
+    Poser32(g_ressource + 0x1C8, 0x3F); Poser32(g_ressource + 0x1CC, 2); Poser32(g_ressource + 0x1D0, 0xFFFFFFFF);
+    Poser32(g_ressource + 0x1D4, 0x64);
+    g_ressourcePrete = 1;
+}
 
 static unsigned char *Copier(unsigned rva, unsigned taille, const Rel *rel, size_t n)
 {
@@ -128,10 +148,11 @@ static void __fastcall hk_menuInit(void *objet, void *edx, void *arg)
     (void)edx;
     unsigned char *obj = (unsigned char *)objet;
     DWORD origine = 0;
-    unsigned char octets[sizeof MenuResource];
+    unsigned char octets[MENU_RESSOURCE_TAILLE];
     Lire(obj + 0x60, &origine, 4);
-    if (origine && Lire((void *)(uintptr_t)origine, octets, sizeof octets) && !memcmp(octets, MenuResource, sizeof octets) &&
+    if (origine && Lire((void *)(uintptr_t)origine, octets, sizeof octets) && Fnv1a(octets, sizeof octets) == MENU_RESSOURCE_FNV &&
         (uintptr_t)arg >= origine && (uintptr_t)arg < origine + sizeof octets) {
+        if (!g_ressourcePrete) PreparerRessource(octets);
         Poser32(obj + 0x60, (DWORD)(uintptr_t)g_ressource);
         g_initCopie(objet, g_ressource + ((uintptr_t)arg - origine));
         Poser32(obj + 0x60, origine);
@@ -173,14 +194,6 @@ static int InstallerMenu(void)
     memset(select + 0xE1, 0x90, 14);
     select[0xE1] = 0xE9; Poser32(select + 0xE2, (DWORD)(stub - (select + 0xE6)));
 
-    memcpy(g_ressource, MenuResource, sizeof MenuResource);
-    Poser32(g_ressource + 0x28, 3); Poser32(g_ressource + 0x2C, 0x160); Poser32(g_ressource + 0x30, 3);
-    Poser32(g_ressource + 0x34, 0x1A8); Poser32(g_ressource + 0x98, 3);
-    memcpy(g_ressource + 0x160, g_ressource + 0xA0, 48); memcpy(g_ressource + 0x190, g_ressource + 0xB8, 24);
-    Poser32(g_ressource + 0x194, 0x121); Poser32(g_ressource + 0x19C, 2); Poser32(g_ressource + 0x1A0, 0x3A8);
-    memcpy(g_ressource + 0x1A8, g_ressource + 0xE0, 32);
-    Poser32(g_ressource + 0x1C8, 0x3F); Poser32(g_ressource + 0x1CC, 2); Poser32(g_ressource + 0x1D0, 0xFFFFFFFF);
-    Poser32(g_ressource + 0x1D4, 0x64);
     if (!Finir(init) || !Finir(select) || !Finir(enter)) return 0;
     g_initCopie = (MenuFn)init;
     DWORD *vt = (DWORD *)(g_base + RVA_VT_ONLINE_MAIN), ancien;

@@ -169,6 +169,10 @@ typedef struct {char file[0x41];WCHAR arch[MAX_PATH];} Copie;
 static Copie copies[100];
 static int copy_count;
 static BYTE archive_view=TOUS;
+static WCHAR archive_opp[64];
+static int archive_req;
+static BOOL player_auto;
+#define ARCHIVES_SHOWN (archive_view!=TOUS || archive_opp[0])
 static int archive_button=0x40,archive_key=VK_INSERT;
 static int is_copy(const char *file) {
     for(int i=0;i<copy_count;i++)if(!strcmp(copies[i].file,file))return i;
@@ -193,8 +197,8 @@ static BOOL is_opponent_name(const WCHAR *n) {
 
 static void rebuild_view(void) {
     LONG n=row_count,c=0;
-    for(LONG k=0;k<n;k++)if(row_matches(&rows[k],chara_filter,player_filter))view[c++]=k;
-    if(!c && n>0 && (chara_filter!=TOUS || player_filter[0]) && archive_view==TOUS) {
+    for(LONG k=0;k<n;k++)if(row_matches(&rows[k],chara_filter,player_filter) && (!archive_req || rows[k].archived))view[c++]=k;
+    if(!c && n>0 && (chara_filter!=TOUS || player_filter[0]) && !ARCHIVES_SHOWN) {
         chara_filter=TOUS;player_filter[0]=0;
         for(LONG k=0;k<n;k++)view[c++]=k;
     }
@@ -205,7 +209,7 @@ static LONG view_pos(LONG pos) {
     return -1;
 }
 static void archive_counts(int *freq);
-static void next_chara(void) {
+__attribute__((unused)) static void next_chara(void) {
     int freq[256]={0};LONG n=row_count;
     for(LONG k=0;k<n;k++)if(rows[k].ok && row_matches(&rows[k],TOUS,player_filter)) {
         freq[rows[k].ch1]++;if(rows[k].ch2!=rows[k].ch1)freq[rows[k].ch2]++;
@@ -218,7 +222,7 @@ static void next_chara(void) {
     for(int i=0;i<m;i++)if(order[i]==chara_filter)at=i;
     chara_filter=at+1<m?(BYTE)order[at+1]:TOUS;
 }
-static void next_player(void) {
+__attribute__((unused)) static void next_player(void) {
     const WCHAR *names[200];int freq[200],m=0;LONG n=row_count;
     if(own_name[0]){names[0]=own_name;freq[0]=1<<30;m=1;}
     for(LONG k=0;k<n;k++) {
@@ -529,18 +533,32 @@ static void archive_counts(int *freq) {
     }
 }
 
-static int copies_in(BYTE c) {
+static BOOL archive_opponent(const WCHAR *file,const WCHAR *folder,WCHAR *opp,int n) {
+    WCHAR me[64],head[96],mid[48];clean_name(own_name,me,64);
+    swprintf(head,96,L"%ls_vs_",me);swprintf(mid,48,L"_%ls_vs_",folder);
+    if(wcsncmp(file,head,lstrlenW(head)))return FALSE;
+    const WCHAR *a=file+lstrlenW(head),*b=wcsstr(a,mid);
+    if(!b || b==a || b-a>=n)return FALSE;
+    lstrcpynW(opp,a,(int)(b-a)+1);return TRUE;
+}
+static int copies_in_files(BYTE c,const WCHAR *opp);
+static int copies_in(BYTE c){return copies_in_files(c,L"");}
+static int copies_in_files(BYTE c,const WCHAR *opp) {
     WCHAR root[MAX_PATH],folder[32],pat[MAX_PATH],arch[MAX_PATH],dst[MAX_PATH];
-    archive_view=c;
+    archive_view=c;lstrcpynW(archive_opp,opp,64);
     if(!sibling_dir(L"REPLY_ARCHIVE",root))return 0;
-    chara_folder(c,folder,32);
-    swprintf(pat,MAX_PATH,L"%ls\\%ls\\*__REPLY*",root,folder);
     int files=(int)rd32(RVA(0xF915D8)),got=0,full=0;
+    for(int cc=0;cc<0x31;cc++) {
+    if(c!=TOUS && cc!=c)continue;
+    if(!chara_names[cc])continue;
+    chara_folder((BYTE)cc,folder,32);
+    swprintf(pat,MAX_PATH,L"%ls\\%ls\\*__REPLY*",root,folder);
     WIN32_FIND_DATAW fd;HANDLE h=FindFirstFileW(pat,&fd);
-    if(h==INVALID_HANDLE_VALUE){JOURNAL("archives_sorties",0,0,0);return 0;}
+    if(h==INVALID_HANDLE_VALUE)continue;
     do {
-        char file[0x41];
+        char file[0x41];WCHAR o[64];
         if((fd.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY) || !original_name(fd.cFileName,file) || copy_count>=100)continue;
+        if(opp[0] && (!archive_opponent(fd.cFileName,folder,o,64) || lstrcmpW(o,opp)))continue;
         swprintf(arch,MAX_PATH,L"%ls\\%ls\\%ls",root,folder,fd.cFileName);
         swprintf(dst,MAX_PATH,L"%ls\\%hs",save_dir,file);
         BOOL there=GetFileAttributesW(dst)!=INVALID_FILE_ATTRIBUTES;
@@ -550,8 +568,31 @@ static int copies_in(BYTE c) {
         lstrcpyA(copies[copy_count].file,file);lstrcpynW(copies[copy_count].arch,arch,MAX_PATH);copy_count++;
     } while(FindNextFileW(h,&fd));
     FindClose(h);
+    }
     JOURNAL("archives_sorties",got,copy_count,full);
     return got;
+}
+
+static int archive_opponents(WCHAR (*names)[64],int *cnt,int max) {
+    WCHAR root[MAX_PATH],folder[32],pat[MAX_PATH];int m=0;
+    if(!own_name[0] || !sibling_dir(L"REPLY_ARCHIVE",root))return 0;
+    for(int c=0;c<0x31;c++) {
+        if(!chara_names[c])continue;
+        chara_folder((BYTE)c,folder,32);
+        swprintf(pat,MAX_PATH,L"%ls\\%ls\\*__REPLY*",root,folder);
+        WIN32_FIND_DATAW fd;HANDLE h=FindFirstFileW(pat,&fd);
+        if(h==INVALID_HANDLE_VALUE)continue;
+        do {
+            WCHAR o[64];
+            if((fd.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY) || !archive_opponent(fd.cFileName,folder,o,64))continue;
+            if(!lstrcmpW(o,L"CPU") || !lstrcmpW(o,L"P1") || !lstrcmpW(o,L"P2") || !lstrcmpW(o,L"Unknown"))continue;
+            int i=0;while(i<m && lstrcmpW(names[i],o))i++;
+            if(i==m){if(m>=max)continue;lstrcpynW(names[m],o,64);cnt[m]=0;m++;}
+            cnt[i]++;
+        } while(FindNextFileW(h,&fd));
+        FindClose(h);
+    }
+    return m;
 }
 
 static int copies_out(void) {
@@ -560,7 +601,7 @@ static int copies_out(void) {
         WCHAR dst[MAX_PATH];swprintf(dst,MAX_PATH,L"%ls\\%hs",save_dir,copies[i].file);
         if(GetFileAttributesW(copies[i].arch)!=INVALID_FILE_ATTRIBUTES && DeleteFileW(dst))n++;
     }
-    copy_count=0;archive_view=TOUS;
+    copy_count=0;archive_view=TOUS;archive_opp[0]=0;
     if(n)JOURNAL("archives_rangees",n,0,0);
     return n;
 }
@@ -587,7 +628,9 @@ static int stale_copies(void) {
     return n;
 }
 
+static volatile DWORD relist_at;
 static void ask_relist(BYTE *menu) {
+    relist_at=GetTickCount()|1;
     release_tile();home_tile=NULL;
     BYTE pad=((BYTE(__cdecl*)(void))RVA(0x67A780))();
     ((void(__cdecl*)(DWORD))RVA(0x133580))(pad);
@@ -595,14 +638,22 @@ static void ask_relist(BYTE *menu) {
 }
 
 static void archive_sync(BYTE *menu) {
-    BYTE want=own_name[0] && chara_filter!=TOUS && !lstrcmpW(player_filter,own_name)?chara_filter:TOUS;
-    if(want==archive_view)return;
+    BYTE want=archive_req==1 && own_name[0] && chara_filter!=TOUS && !lstrcmpW(player_filter,own_name)?chara_filter:TOUS;
+    WCHAR wopp[64]=L"";
+    if(archive_req==2 && own_name[0] && player_filter[0] && lstrcmpW(player_filter,own_name)) {
+        WCHAR names[64][64];int cnt[64],m=archive_opponents(names,cnt,64);
+        WCHAR cp[64];clean_name(player_filter,cp,64);
+        for(int i=0;i<m;i++)if(!lstrcmpW(names[i],cp)){lstrcpynW(wopp,cp,64);break;}
+    }
+    if(want==archive_view && !lstrcmpW(wopp,archive_opp))return;
     int n=copies_out();
     if(want!=TOUS)n+=copies_in(want);
+    else if(wopp[0])n+=copies_in_files(TOUS,wopp);
     if(n)ask_relist(menu);
 }
 
 static DWORD prev_filter;
+static void open_popup(int kind);
 static BOOL prev_chara_key=TRUE,prev_player_key=TRUE;
 static BOOL key_pressed(int vk,BOOL *prev) {
     DWORD pid=0;GetWindowThreadProcessId(GetForegroundWindow(),&pid);
@@ -620,19 +671,8 @@ static void filter_input(BOOL use,BYTE *menu) {
     for(int b=0;b<32 && buttons && noted<30;b++)if(buttons&(1u<<b)){noted++;JOURNAL("bouton",1u<<b,0,0);}
     BOOL c=kc || (chara_button && (pressed&chara_button)),p=kp || (player_button && (pressed&player_button));
     if(!c && !p)return;
-    disarm();
-    EnterCriticalSection(&lock);
-    if(c)next_chara();
-    if(p)next_player();
-    LeaveCriticalSection(&lock);
-    archive_sync(menu);
-    EnterCriticalSection(&lock);
-    rebuild_view();
-    if(view_pos(sel)<0 && view_count>0)sel=view[0];
-    LeaveCriticalSection(&lock);
-    InterlockedIncrement(&list_version);
-    play_sound(0x10001);
-    JOURNAL("filtre",chara_filter==TOUS?-1:chara_filter,player_filter[0]!=0,view_count);
+    (void)menu;
+    EnterCriticalSection(&lock);open_popup(c?1:2);LeaveCriticalSection(&lock);
 }
 
 static void remove_row(LONG count) {
@@ -694,7 +734,8 @@ static void action_input(BYTE *menu,LONG count) {
     if(!r->ok || !archive_file(r,name,arch)){play_sound(0x1001d);return;}
     play_sound(0x1001a);JOURNAL("archive",sel+1,0,0);
     BYTE mine=my_side(r)?r->ch2:r->ch1;
-    if(archive_view!=TOUS && mine==archive_view && copy_count<100 && CopyFileW(arch,path,TRUE)) {
+    WCHAR oc[64];clean_name(my_side(r)?r->p1:r->p2,oc,64);
+    if(((archive_view!=TOUS && mine==archive_view) || (archive_opp[0] && !lstrcmpW(oc,archive_opp))) && copy_count<100 && CopyFileW(arch,path,TRUE)) {
 
         lstrcpyA(copies[copy_count].file,name);lstrcpynW(copies[copy_count].arch,arch,MAX_PATH);copy_count++;
         EnterCriticalSection(&lock);r->archived=TRUE;LeaveCriticalSection(&lock);
@@ -703,16 +744,133 @@ static void action_input(BYTE *menu,LONG count) {
     }
     remove_row(count);ask_relist(menu);
 }
+
+#define POP_MAX 200
+static int popup;
+static int pop_n,pop_sel,pop_top,pop_cols=10;
+static BYTE pop_chara[POP_MAX];static int pop_count[POP_MAX],pop_arch[POP_MAX];
+static WCHAR pop_name[POP_MAX][64];
+static DWORD pop_prev,pop_opened;static DWORD lock_until;static BYTE lock_saved[8];static BOOL lock_on;
+#define BTN_CROSS 0x10
+#define BTN_CIRCLE 0x20
+#define MENU_LOCK 0xF8A840
+static void game_lock(BOOL on) {
+    BYTE *l=RVA(MENU_LOCK);DWORD old;
+    if(on && !lock_on){memcpy(lock_saved,l,8);if(VirtualProtect(l,8,PAGE_READWRITE,&old)){memset(l,1,8);VirtualProtect(l,8,old,&old);}lock_on=TRUE;}
+    else if(!on && lock_on){if(VirtualProtect(l,8,PAGE_READWRITE,&old)){memcpy(l,lock_saved,8);VirtualProtect(l,8,old,&old);}lock_on=FALSE;}
+}
+static void open_popup(int kind) {
+    int n=0;LONG rc=row_count;
+    if(kind==1) {
+        int freq[256]={0},arch[256]={0};
+        for(LONG k=0;k<rc;k++)if(rows[k].ok && !rows[k].archived && row_matches(&rows[k],TOUS,player_filter)) {
+            freq[rows[k].ch1]++;if(rows[k].ch2!=rows[k].ch1)freq[rows[k].ch2]++;
+        }
+        if(own_name[0])archive_counts(arch);
+        BOOL mine=own_name[0] && !lstrcmpW(player_filter,own_name);
+        pop_chara[n]=TOUS;pop_count[n]=0;pop_arch[n]=0;n++;
+        int order[256],m=0;
+        for(int c=0;c<0x31;c++)if((freq[c] || arch[c]) && chara_names[c])order[m++]=c;
+        for(int i=1;i<m;i++)for(int j=i;j>0 && freq[order[j]]+(mine?arch[order[j]]:0)>freq[order[j-1]]+(mine?arch[order[j-1]]:0);j--){int t=order[j];order[j]=order[j-1];order[j-1]=t;}
+        for(int i=0;i<m && n<POP_MAX;i++){BYTE c=(BYTE)order[i];capture_face(c);pop_chara[n]=c;pop_count[n]=freq[c];pop_arch[n]=arch[c];n++;}
+        pop_sel=0;for(int i=0;i<n;i++)if(pop_chara[i]==chara_filter)pop_sel=i;
+    } else {
+        const WCHAR *names[POP_MAX];int freq[POP_MAX],m=0;
+        if(own_name[0]){names[0]=own_name;freq[0]=0;m=1;}
+        for(LONG k=0;k<rc;k++) {
+            if(!rows[k].ok || rows[k].archived || !row_matches(&rows[k],chara_filter,L""))continue;
+            const WCHAR *pp[2]={rows[k].p1,rows[k].p2};
+            for(int s2=0;s2<2;s2++) {
+                if(s2==1 && !lstrcmpW(pp[1],pp[0]))continue;
+                if(lstrcmpW(pp[s2],own_name) && lstrcmpW(pp[s2],L"?") && !is_opponent_name(pp[s2]))continue;
+                int i=0;while(i<m && lstrcmpW(names[i],pp[s2]))i++;
+                if(i==m){if(m>=POP_MAX-1)continue;names[m]=pp[s2];freq[m]=0;m++;}
+                freq[i]++;
+            }
+        }
+        static WCHAR an[64][64];int ac[64],am=archive_opponents(an,ac,64);
+        static int parch[POP_MAX];memset(parch,0,sizeof parch);
+        for(int a=0;a<am;a++) {
+            int i=0;for(;i<m;i++){WCHAR cn[64];clean_name(names[i],cn,64);if(!lstrcmpW(cn,an[a]))break;}
+            if(i==m){if(m>=POP_MAX-1)continue;names[m]=lstrcmpW(an[a],L"_")?an[a]:L"?";freq[m]=0;m++;}
+            parch[i]+=ac[a];
+        }
+        int first=own_name[0]?1:0;
+        for(int i=first+1;i<m;i++)for(int j=i;j>first && freq[j]+parch[j]>freq[j-1]+parch[j-1];j--){
+            int t=freq[j];freq[j]=freq[j-1];freq[j-1]=t;t=parch[j];parch[j]=parch[j-1];parch[j-1]=t;const WCHAR *q=names[j];names[j]=names[j-1];names[j-1]=q;}
+        pop_name[0][0]=0;pop_count[0]=0;pop_arch[0]=0;n=1;
+        for(int i=0;i<m && n<POP_MAX;i++){lstrcpynW(pop_name[n],names[i],64);pop_count[n]=freq[i];pop_arch[n]=i>=first?parch[i]:0;n++;}
+        pop_sel=0;for(int i=1;i<n;i++)if(player_filter[0] && !lstrcmpW(pop_name[i],player_filter))pop_sel=i;
+    }
+    pop_n=n;pop_top=0;popup=kind;pop_opened=GetTickCount();
+    DWORD held=0;for(int d=0;d<5;d++)held|=rd32(RVA(0x2057928+d*0x2c));pop_prev=held;
+    disarm();game_lock(TRUE);
+    InterlockedIncrement(&list_version);play_sound(0x10001);
+    JOURNAL("fenetre_filtre",kind,n,0);
+}
+static void apply_filter(BYTE *menu,int archives) {
+    if(popup==1) {
+        chara_filter=pop_chara[pop_sel];
+        if(archives && own_name[0] && chara_filter!=TOUS){
+            if(lstrcmpW(player_filter,own_name)){lstrcpynW(player_filter,own_name,64);player_auto=TRUE;}
+            archive_req=1;
+        } else {
+            if(player_auto){player_filter[0]=0;player_auto=FALSE;}
+            archive_req=0;
+        }
+    } else {
+        player_auto=FALSE;
+        if(pop_sel==0)player_filter[0]=0;else lstrcpynW(player_filter,pop_name[pop_sel],64);
+        archive_req=archives && pop_sel>0 && lstrcmpW(player_filter,own_name)?2:0;
+    }
+    archive_sync(menu);
+    EnterCriticalSection(&lock);
+    rebuild_view();
+    if(view_pos(sel)<0 && view_count>0)sel=view[0];
+    LeaveCriticalSection(&lock);
+    JOURNAL("filtre",chara_filter==TOUS?-1:chara_filter,player_filter[0]!=0,view_count);
+}
+static void close_popup(void) {
+    popup=0;lock_until=GetTickCount()+400;InterlockedIncrement(&list_version);
+}
+static BOOL prev_enter=TRUE,prev_esc=TRUE,prev_kc2=TRUE,prev_kp2=TRUE,prev_left=TRUE,prev_right=TRUE,prev_up=TRUE,prev_down=TRUE;
+static void popup_input(BYTE *menu) {
+    DWORD held=0;for(int d=0;d<5;d++)held|=rd32(RVA(0x2057928+d*0x2c));
+    DWORD pressed=held&~pop_prev;pop_prev=held;
+    int step=nav_step();
+    if(key_pressed(VK_LEFT,&prev_left))step=-1000;
+    if(key_pressed(VK_RIGHT,&prev_right))step=1000;
+    if(key_pressed(VK_UP,&prev_up))step=-1;
+    if(key_pressed(VK_DOWN,&prev_down))step=1;
+    BOOL ok=(pressed&BTN_CROSS) || key_pressed(VK_RETURN,&prev_enter);
+    BOOL arc=(pressed&archive_button)!=0;
+    BOOL kc=key_pressed(chara_key,&prev_kc2),kp=key_pressed(player_key,&prev_kp2);
+    BOOL back=(pressed&BTN_CIRCLE) || key_pressed(VK_ESCAPE,&prev_esc)
+             || (popup==1 && ((pressed&chara_button) || kc)) || (popup==2 && ((pressed&player_button) || kp));
+    if(GetTickCount()-pop_opened<250){ok=arc=back=FALSE;}
+    if(step) {
+        int to=pop_sel;
+        if(popup==1){if(step==1000)to++;else if(step==-1000)to--;else to+=step*pop_cols;}
+        else {if(step==1000)to+=8;else if(step==-1000)to-=8;else to+=step;}
+        if(to<0)to=popup==1&&step==-1000?pop_n-1:0;
+        if(to>=pop_n)to=popup==1&&step==1000?0:pop_n-1;
+        if(to!=pop_sel){pop_sel=to;play_sound(0x10001);InterlockedIncrement(&list_version);}
+    }
+    if(ok || arc){apply_filter(menu,arc);close_popup();play_sound(0x10000);return;}
+    if(back){close_popup();play_sound(0x10001);}
+}
 static BOOL clean_copies;
 void __cdecl rm_update_before(BYTE *menu) {
-    BOOL fresh=menu!=seen_menu || GetTickCount()-menu_tick>500;
-    if(fresh){seen_menu=menu;wait_frames=1;sel=-1;forced_at=NULL;home_tile=NULL;launched=FALSE;prev_focus=-1;box_wait=0;loading_pos=-1;armed_pos=-1;InterlockedExchange(&row_count,0);InterlockedExchange(&view_count,0);
+
+    BOOL relisting=relist_at && GetTickCount()-relist_at<15000;
+    BOOL fresh=menu!=seen_menu || (GetTickCount()-menu_tick>500 && !relisting);
+    if(fresh){if(popup){popup=0;lock_until=GetTickCount();}seen_menu=menu;wait_frames=1;sel=-1;forced_at=NULL;home_tile=NULL;launched=FALSE;prev_focus=-1;box_wait=0;loading_pos=-1;armed_pos=-1;InterlockedExchange(&row_count,0);InterlockedExchange(&view_count,0);
 
         if(own_name[0] && !lstrcmpW(player_filter,own_name))player_filter[0]=0;
-        copy_count=0;archive_view=TOUS;clean_copies=TRUE;}
+        copy_count=0;archive_view=TOUS;archive_opp[0]=0;archive_req=0;player_auto=FALSE;clean_copies=TRUE;}
     menu_tick=GetTickCount();
     if(wait_frames>0 && !menu[0x17a4] && ++wait_frames>3) {
-        wait_frames=0;
+        wait_frames=0;relist_at=0;
         if(sel<0){DWORD *p=cursor_data(menu);sel=p?(LONG)*p:0;}
         build_list(menu);
         if(sel>=row_count)sel=row_count-1;
@@ -724,7 +882,10 @@ void __cdecl rm_update_before(BYTE *menu) {
     LONG count=row_count;
     BOOL active=!wait_frames && count>0;
     if(active)capture_thumbs();
-    if(active && rd32(menu+0xb84)==0 && loading_pos<0) {
+    if(!popup && lock_on && (LONG)(GetTickCount()-lock_until)>=0)game_lock(FALSE);
+    if(popup && (!active || rd32(menu+0xb84)!=0)){popup=0;lock_until=GetTickCount();}
+    if(popup)popup_input(menu);
+    else if(active && rd32(menu+0xb84)==0 && loading_pos<0 && !lock_on) {
         int step=nav_step();
         LONG vcount=view_count;
         if(step && vcount>0) {
@@ -894,11 +1055,13 @@ static void paint_bar(int w,int bh) {
     if(player_button || player_key) {
         swprintf(t,96,L"%ls  Player:",control_name(player_button,player_key,c,24));
         text(font_bar,lab,x,0,w/3,bh,t,DT_LEFT);x+=text_width(font_bar,t)+pad;
-        text(font_bar,player_filter[0]?on:off,x,0,w*35/100,bh,player_filter[0]?player_filter:L"All",DT_LEFT);
+        text(font_bar,player_filter[0]?on:off,x,0,w*35/100,bh,!player_filter[0]?L"All":lstrcmpW(player_filter,L"?")?player_filter:L"Unknown opponent",DT_LEFT);
     }
-    swprintf(t,96,L"%ls%ld / %ld",archive_view!=TOUS?L"Archives shown   ":L"",view_count,row_count);
-    text(font_bar,archive_view!=TOUS?RGB(120,170,255):lab,w-w*3/10-pad,0,w*3/10,bh,t,DT_RIGHT);
+    LONG tot=0;for(LONG k=0;k<row_count;k++)if(rows[k].archived==(archive_req!=0))tot++;
+    swprintf(t,96,L"%ls%ld / %ld",ARCHIVES_SHOWN?L"Archives shown   ":L"",view_count,tot);
+    text(font_bar,ARCHIVES_SHOWN?RGB(120,170,255):lab,w-w*3/10-pad,0,w*3/10,bh,t,DT_RIGHT);
 }
+static void paint_popup(int w,int h);
 static void paint_panel(int w,int h,int pos) {
     LONG count=view_count,cur=view_pos(pos);
     int bh=bar_height(h),H=h-bh;
@@ -970,6 +1133,106 @@ static void paint_panel(int w,int h,int pos) {
     if(count>visible_rows) {
         int sh=H*visible_rows/count,sy=bh+(H-sh)*top_row/(count-visible_rows);
         fill(w-gap/2-3,sy,3,sh,RGB(200,150,30));
+    }
+    if(popup){GdiFlush();paint_popup(w,h);}
+}
+
+static void frame_box(int x,int y,int w,int h,COLORREF edge,COLORREF bg){fill(x-2,y-2,w+4,h+4,edge);fill(x,y,w,h,bg);}
+
+static int ps_icon(int x,int y,int h,int shape) {
+    static const COLORREF col[4]={RGB(120,170,255),RGB(255,90,90),RGB(230,140,200),RGB(80,200,160)};
+    HBRUSH br=CreateSolidBrush(RGB(28,28,28));HPEN rim=CreatePen(PS_SOLID,1,RGB(200,200,200));
+    HGDIOBJ ob=SelectObject(dib_dc,br),op=SelectObject(dib_dc,rim);Ellipse(dib_dc,x,y,x+h,y+h);
+    int c=h/2,r=h*27/100,t=h/11<2?2:h/11;
+    HPEN pen=CreatePen(PS_SOLID,t,col[shape&3]);SelectObject(dib_dc,pen);SelectObject(dib_dc,GetStockObject(NULL_BRUSH));
+    if(shape==0){MoveToEx(dib_dc,x+c-r,y+c-r,NULL);LineTo(dib_dc,x+c+r,y+c+r);MoveToEx(dib_dc,x+c+r,y+c-r,NULL);LineTo(dib_dc,x+c-r,y+c+r);}
+    else if(shape==1)Ellipse(dib_dc,x+c-r,y+c-r,x+c+r,y+c+r);
+    else if(shape==2)Rectangle(dib_dc,x+c-r,y+c-r,x+c+r,y+c+r);
+    else {POINT pt[4]={{x+c,y+c-r},{x+c+r,y+c+r*8/10},{x+c-r,y+c+r*8/10},{x+c,y+c-r}};Polyline(dib_dc,pt,4);}
+    SelectObject(dib_dc,ob);SelectObject(dib_dc,op);DeleteObject(br);DeleteObject(rim);DeleteObject(pen);
+    return h;
+}
+
+typedef struct {int icon;const WCHAR *txt;} Hint;
+static void hints(HFONT f,COLORREF c,int x,int y,int w,int h,const Hint *hs,int n,UINT align) {
+    int ih=h*62/100,pad=h/5,gap=h*55/100,tot=0;
+    for(int i=0;i<n;i++)tot+=(hs[i].icon>=0?ih+pad:0)+text_width(f,hs[i].txt)+(i?gap:0);
+    int xx=align==DT_RIGHT?x+w-tot:align==DT_CENTER?x+(w-tot)/2:x;
+    for(int i=0;i<n;i++){
+        if(i)xx+=gap;
+        if(hs[i].icon>=0){ps_icon(xx,y+(h-ih)/2,ih,hs[i].icon);xx+=ih+pad;}
+        int tw=text_width(f,hs[i].txt);text(f,c,xx,y,tw+4,h,hs[i].txt,DT_LEFT);xx+=tw;
+    }
+}
+
+static void draw_counts(HFONT f,int x,int y,int w,int h,int count,int arch,BOOL on,UINT align) {
+    WCHAR a[16],b[16];swprintf(a,16,L"%d",count);swprintf(b,16,L"%d",arch);
+    int tw=text_width(f,a),sz=h*45/100,gap=sz/2,bw=arch?gap*2+sz+gap/2+text_width(f,b):0,tot=tw+bw;
+    int x0=align==DT_RIGHT?x+w-tot:align==DT_CENTER?x+(w-tot)/2:x;
+    text(f,on?RGB(40,24,0):RGB(240,240,240),x0,y,tw+2,h,a,DT_LEFT);
+    if(!arch)return;
+    COLORREF blue=on?RGB(20,40,140):RGB(120,170,255);
+    int bx=x0+tw+gap*2,by=y+(h-sz)/2;
+    fill(bx,by,sz,sz,blue);fill(bx+2,by+sz/3,sz-4,sz*2/3-2,on?RGB(200,150,30):RGB(24,18,20));fill(bx+sz/3,by+sz/3+1,sz/3,2,blue);
+    text(f,blue,bx+sz+gap/2,y,text_width(f,b)+2,h,b,DT_LEFT);
+}
+static void paint_popup(int w,int h) {
+    for(int y=0;y<h;y++)for(int x=0;x<w;x++){DWORD *d=dib_bits+y*w+x,c=*d;*d=((c>>2)&0x3f3f3f);}
+    int bh=bar_height(h),pad=bh/3;
+    COLORREF gold=RGB(200,150,30),light=RGB(255,220,120),txt=RGB(240,240,240),dim=RGB(170,165,165);
+    WCHAR t[160];
+    if(popup==1) {
+        int cols=pop_cols,rowsn=(pop_n+cols-1)/cols;
+        int cw=w*83/1000,fh=cw*FACE_H/FACE_W,ch=fh+bh*6/10;
+        int maxrows=(h-bh-bh*8/10-3*pad)/(ch+pad);if(maxrows<1)maxrows=1;
+        int vis=rowsn<maxrows?rowsn:maxrows;
+        int selrow=pop_sel/cols;
+        if(selrow<pop_top)pop_top=selrow;
+        if(selrow>=pop_top+vis)pop_top=selrow-vis+1;
+        int bw=cols*(cw+pad)+pad,bht=bh+vis*(ch+pad)+pad+bh*8/10,bx=(w-bw)/2,by=(h-bht)/2;
+        frame_box(bx,by,bw,bht,gold,RGB(24,18,20));
+        text(font_bar,light,bx+pad,by,bw-2*pad,bh,L"Character",DT_LEFT);
+        {Hint hs[3]={{0,L"Replays"},{2,L"My archives"},{1,L"Back"}};hints(font_bar,dim,bx+pad,by,bw-2*pad,bh,hs,3,DT_RIGHT);}
+        for(int r=0;r<vis;r++)for(int c=0;c<cols;c++) {
+            int i=(pop_top+r)*cols+c;if(i>=pop_n)break;
+            int x=bx+pad+c*(cw+pad),y=by+bh+r*(ch+pad);
+            BOOL on=i==pop_sel;BYTE k=pop_chara[i];
+            fill(x,y,cw,ch,on?gold:RGB(48,44,46));
+            if(on)fill(x,y,cw,3,light);
+            if(k==TOUS)text(font_big,on?RGB(20,12,0):txt,x,y,cw,fh,L"All",DT_CENTER);
+            else if(k<=0x30 && faces[k].ok)draw_pic(faces[k].px,FACE_W,FACE_H,x+3,y+3,cw-6,fh-3);
+            else{WCHAR nm[32];chara_name(k,nm,32);text(font_name,on?RGB(20,12,0):txt,x,y,cw,fh,nm,DT_CENTER);}
+            if(k==TOUS)text(font_small,on?RGB(40,24,0):dim,x,y+fh,cw,ch-fh,L"all replays",DT_CENTER);
+            else draw_counts(font_small,x,y+fh,cw,ch-fh,pop_count[i],pop_arch[i],on,DT_CENTER);
+        }
+        int rowsn2=rowsn;if(rowsn2>vis){int sh=(vis*(ch+pad))*vis/rowsn2,sy=by+bh+(vis*(ch+pad)-sh)*pop_top/(rowsn2-vis);fill(bx+bw-pad/2-2,sy,3,sh,gold);}
+        if(pop_sel<pop_n && pop_chara[pop_sel]!=TOUS) {
+            WCHAR nm[32],a[64],b[48];chara_name(pop_chara[pop_sel],nm,32);
+            swprintf(a,64,L"%ls  -  %d replay(s)",nm,pop_count[pop_sel]);swprintf(b,48,L"%d in your archives",pop_arch[pop_sel]);
+            Hint hs[2]={{0,a},{2,b}};hints(font_name,txt,bx+pad,by+bht-bh*8/10,bw-2*pad,bh*8/10,hs,pop_arch[pop_sel]?2:1,DT_CENTER);
+        } else text(font_name,txt,bx+pad,by+bht-bh*8/10,bw-2*pad,bh*8/10,L"All characters",DT_CENTER);
+    } else {
+        int lh=bh*8/10,maxl=(h-3*bh)/lh;if(maxl<3)maxl=3;
+        int vis=pop_n<maxl?pop_n:maxl;
+        if(pop_sel<pop_top)pop_top=pop_sel;
+        if(pop_sel>=pop_top+vis)pop_top=pop_sel-vis+1;
+        int bw=w*45/100,bht=bh+vis*lh+pad*2,bx=(w-bw)/2,by=(h-bht)/2;
+        frame_box(bx,by,bw,bht,gold,RGB(24,18,20));
+        text(font_bar,light,bx+pad,by,bw-2*pad,bh,L"Player",DT_LEFT);
+        {Hint hs[3]={{0,L"Replays"},{2,L"Archives"},{1,L"Back"}};hints(font_bar,dim,bx+pad,by,bw-2*pad,bh,hs,3,DT_RIGHT);}
+        for(int l=0;l<vis;l++) {
+            int i=pop_top+l;if(i>=pop_n)break;
+            int y=by+bh+pad+l*lh;BOOL on=i==pop_sel;
+            fill(bx+pad,y,bw-2*pad,lh-2,on?gold:RGB(40,36,38));
+            COLORREF c=on?RGB(20,12,0):txt;
+            if(i==0)lstrcpynW(t,L"All",160);
+            else if(own_name[0] && !lstrcmpW(pop_name[i],own_name))swprintf(t,160,L"%ls   (you)",pop_name[i]);
+            else if(!lstrcmpW(pop_name[i],L"?"))lstrcpynW(t,L"Unknown opponent",160);
+            else lstrcpynW(t,pop_name[i],160);
+            text(font_name,c,bx+pad*2,y,bw*7/10,lh,t,DT_LEFT);
+            if(i>0)draw_counts(font_name,bx+pad,y,bw-3*pad,lh,pop_count[i],pop_arch[i],on,DT_RIGHT);
+        }
+        if(pop_n>vis){int sh=vis*lh*vis/pop_n,sy=by+bh+pad+(vis*lh-sh)*pop_top/(pop_n-vis);fill(bx+bw-pad/2-2,sy,3,sh,gold);}
     }
 }
 static BOOL update_texture(IDirect3DDevice9 *dev,int w,int h,int cur) {
@@ -1090,14 +1353,10 @@ static HRESULT WINAPI createdevice_hook(IDirect3D9 *d3d,UINT a,D3DDEVTYPE t,HWND
     return hr;
 }
 static void install_d3d_hooks(void) {
-    IDirect3D9 *d3d=Direct3DCreate9(D3D_SDK_VERSION);
-    if(!d3d){JOURNAL("d3d9_indisponible",0,0,0);return;}
-    void **vt=*(void***)d3d;DWORD old;
-    if(VirtualProtect(&vt[16],4,PAGE_EXECUTE_READWRITE,&old)) {
-        createdevice_original=(CreateDevice_t)vt[16];vt[16]=(void*)createdevice_hook;
-        VirtualProtect(&vt[16],4,old,&old);
-    }
-    IDirect3D9_Release(d3d);
+    void **vt=D3D9_Methodes();
+    if(!vt){JOURNAL("d3d9_indisponible",0,0,0);return;}
+    {DWORD o_;VirtualProtect(&vt[16],4,PAGE_EXECUTE_READWRITE,&o_);
+        for(;;){void *cur=vt[16];createdevice_original=(CreateDevice_t)cur;if(InterlockedCompareExchangePointer(&vt[16],(void*)createdevice_hook,cur)==cur)break;}}
 }
 
 static DWORD WINAPI worker(void *u) {
@@ -1120,7 +1379,7 @@ static DWORD WINAPI worker(void *u) {
         rm_watch_original=*wslot;*wslot=(void*)watch_hook;VirtualProtect(wslot,4,old,&old);
     }
     rm_text_original=detour_shared(0x745BA0,prologue_text,5,(void*)hook_text);
-    JOURNAL("pret 1.2",rm_sound_original!=NULL,rm_text_original!=NULL,rm_watch_original!=NULL);
+    JOURNAL("pret 1.2+menus",rm_sound_original!=NULL,rm_text_original!=NULL,rm_watch_original!=NULL);
     return 0;
 }
 

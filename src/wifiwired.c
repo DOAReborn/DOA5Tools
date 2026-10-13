@@ -6,10 +6,6 @@
 #include <string.h>
 #include "commun.h"
 
-#define RVA_NCP_VTABLE      0xBE22E4
-#define RVA_NCP_SERIALIZE   0x515540
-#define NCP_TYPE_CONNEXION  0x117
-
 static volatile uint8_t g_type = 1;
 
 static uint8_t DetecterType(void)
@@ -27,33 +23,19 @@ static uint8_t DetecterType(void)
     return type;
 }
 
-typedef uint8_t (__thiscall *Serialiser_t)(void *paquet, void *flux);
-static Serialiser_t o_serialiser;
-static uint8_t __fastcall hk_serialiser(void *paquet, void *edx, void *flux)
-{
-    (void)edx;
-    ((uint8_t *)paquet)[NCP_TYPE_CONNEXION] = g_type;
-    return o_serialiser(paquet, flux);
-}
+static volatile LONG g_actif;
+uint8_t WiFiWired_Type(void) { return g_actif ? g_type : 0; }
 
-static DWORD WINAPI Installer(LPVOID p)
+static DWORD WINAPI Detecter(LPVOID p)
 {
     (void)p;
     g_type = DetecterType();
-    uint8_t *base = (uint8_t *)GetModuleHandleA(NULL);
-    void **slot = (void **)(base + RVA_NCP_VTABLE) + 2;
-    for (int t = 0; t < 600 && *slot != (void *)(base + RVA_NCP_SERIALIZE); t++) Sleep(100);
-    if (*slot != (void *)(base + RVA_NCP_SERIALIZE)) return 0;
-    DWORD ancien;
-    if (!VirtualProtect(slot, sizeof(void *), PAGE_READWRITE, &ancien)) return 0;
-    o_serialiser = (Serialiser_t)*slot;
-    InterlockedExchange((volatile LONG *)slot, (LONG)(uintptr_t)hk_serialiser);
-    VirtualProtect(slot, sizeof(void *), ancien, &ancien);
+    InterlockedExchange(&g_actif, 1);
     return 0;
 }
 
 void WiFiWired_Demarrer(void)
 {
-    HANDLE t = CreateThread(NULL, 0, Installer, NULL, 0, NULL);
+    HANDLE t = CreateThread(NULL, 0, Detecter, NULL, 0, NULL);
     if (t) CloseHandle(t);
 }

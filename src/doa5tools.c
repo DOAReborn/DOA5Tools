@@ -2,9 +2,11 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <d3d9.h>
 #include "commun.h"
 
-#define VERSION_DOA5TOOLS "1.2"
+#define VERSION_DOA5TOOLS "1.3"
+const wchar_t TEXTE_VERSION_DOA5TOOLS[] = L"DOA5Tools " VERSION_DOA5TOOLS;
 
 static char g_ini[MAX_PATH];
 const char *CheminIni(void) { return g_ini; }
@@ -22,6 +24,20 @@ void Journal(const char *module, const char *libelle, long a, long b, long c)
     if (n > 0) g_octets += n;
     fflush(g_log);
     LeaveCriticalSection(&g_cs);
+}
+
+static void **volatile g_d3d9Vt;
+static volatile LONG g_d3d9Etat;
+void **D3D9_Methodes(void)
+{
+    if (InterlockedCompareExchange(&g_d3d9Etat, 1, 0) == 0) {
+        const DWORD t = GetTickCount();
+        IDirect3D9 *d3d = Direct3DCreate9(D3D_SDK_VERSION);
+        if (d3d) { g_d3d9Vt = *(void ***)d3d; IDirect3D9_Release(d3d); }
+        Journal("DOA5Tools", "d3d9 table/ms_depuis_debut/ms_appel", g_d3d9Vt != NULL, (long)(t - g_t0), (long)(GetTickCount() - t));
+        InterlockedExchange(&g_d3d9Etat, 2);
+    } else while (g_d3d9Etat != 2) Sleep(1);
+    return g_d3d9Vt;
 }
 
 #define RVA_IAT_RUNCALLBACKS 0x9663DC
@@ -92,6 +108,11 @@ BOOL WINAPI DllMain(HINSTANCE h, DWORD raison, LPVOID r)
     if (Reglage("DOA5Tools", "60fps", 1)) Fps60_Demarrer();
     if (Reglage("DOA5Tools", "ReplayMenu", 1)) ReplayMenu_Demarrer();
     if (Reglage("DOA5Tools", "LobbyChat", 1)) LobbyChat_Demarrer();
+    if (Reglage("DOA5Tools", "StageSlots", 1)) StageSlots_Demarrer();
+    if (Reglage("DOA5Tools", "IntroOutroSkip", 1)) IntroOutroSkip_Demarrer();
+    if (Reglage("DOA5Tools", "LobbyName", 1)) LobbyName_Demarrer();
+    VersionTitre_Demarrer();
+    Fiche_Demarrer();
     if (g_nbTics) {
         HANDLE t = CreateThread(NULL, 0, PoserTic, NULL, 0, NULL);
         if (t) CloseHandle(t);

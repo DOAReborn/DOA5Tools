@@ -370,13 +370,10 @@ static HRESULT WINAPI createdevice_hook(IDirect3D9 *d3d,UINT a,D3DDEVTYPE t,HWND
     return hr;
 }
 static void install_d3d_hooks(void){
-    IDirect3D9 *d3d=Direct3DCreate9(D3D_SDK_VERSION);
-    if(!d3d){JOURNAL("affichage",0);return;}
-    void **vt=*(void***)d3d;DWORD old;
-    if(VirtualProtect(&vt[16],4,PAGE_EXECUTE_READWRITE,&old)){
-        createdevice_original=(CreateDevice_t)vt[16];vt[16]=(void*)createdevice_hook;VirtualProtect(&vt[16],4,old,&old);
-    }
-    IDirect3D9_Release(d3d);
+    void **vt=D3D9_Methodes();
+    if(!vt){JOURNAL("affichage",0);return;}
+    {DWORD o_;VirtualProtect(&vt[16],4,PAGE_EXECUTE_READWRITE,&o_);
+        for(;;){void *cur=vt[16];createdevice_original=(CreateDevice_t)cur;if(InterlockedCompareExchangePointer(&vt[16],(void*)createdevice_hook,cur)==cur)break;}}
 }
 
 void *lc_chat_original,*lc_lobby_original;
