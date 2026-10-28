@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 620" preserveAspectRatio="xMaxYMid slice">
+  <defs>
+    <filter id="brume" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.0024 0.0055" numOctaves="5" seed="7"/><feColorMatrix type="matrix" values="0 0 0 0 0.08  0 0 0 0 0.42  0 0 0 0 0.40  1.6 0 0 0 -0.55"/></filter><filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="3" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter>
+    <radialGradient id="zone" cx="1536.0" cy="260.4" r="729.6" gradientUnits="userSpaceOnUse" gradientTransform="translate(0 260.4) scale(1 .8) translate(0 -260.4)">
+      <stop offset="0" stop-color="#fff"/><stop offset=".5" stop-color="#fff" stop-opacity=".5"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <mask id="m"><rect width="1920" height="620" fill="url(#zone)"/></mask>
+  </defs>
+  <rect width="1920" height="620" fill="#070a0d"/>
+  <rect width="1920" height="620" filter="url(#brume)" mask="url(#m)" opacity=".75"/>
+  <rect width="1920" height="620" filter="url(#grain)" opacity=".06"/>
+</svg>

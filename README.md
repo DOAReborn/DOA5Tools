@@ -1,6 +1,13 @@
-# DOA5Tools
-
-A single ASI plugin for **Dead or Alive 5 Last Round** that brings back lobbies and fixes or improves a few things around them.
+<p align="center">
+  <img src="docs/readme-banner.svg" alt="DOA5Tools" width="720">
+</p>
+<p align="center">A single ASI plugin for <b>Dead or Alive 5 Last Round</b> that brings back lobbies and fixes or improves a few things around them.</p>
+<p align="center">
+  <a href="https://github.com/DOAReborn/DOA5Tools/releases/latest"><img src="https://img.shields.io/github/v/release/DOAReborn/DOA5Tools?label=release" alt="release"></a>
+  <a href="https://github.com/DOAReborn/DOA5Tools/releases"><img src="https://img.shields.io/github/downloads/DOAReborn/DOA5Tools/total" alt="downloads"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/DOAReborn/DOA5Tools" alt="license"></a>
+  <img src="https://img.shields.io/badge/game-DOA5%20Last%20Round-e0457b" alt="game: DOA5 Last Round">
+</p>
 
 ## Install
 
