@@ -90,5 +90,4 @@ footer { text-align:center; color:var(--gris); font-size:.85rem; padding:2rem 1r
   .hero { align-items:center; text-align:center; }
   .hero::after { background:linear-gradient(rgba(7,10,13,.55), rgba(7,10,13,.8)), linear-gradient(to bottom, transparent 60%, var(--bg)); }
 }
-@media (max-width:520px) { nav a[href="planned.html"] { display:none; } }
 @media (prefers-reduced-motion:reduce) { *, *::before, *::after { transition:none !important; } }

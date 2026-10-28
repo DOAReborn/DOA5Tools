@@ -49,7 +49,7 @@ To uninstall, use DOA5Installer.
 - 120/144 fps in fights (off by default, experimental).
 - Replay list in rows, with filters by character and player. Archive replays to get past the limit.
 - Skip character intros and the victory pose.
-- Extra stage slots: the PS4 stages installed with DOA5Installer.
+- Extra stage slots for the stages installed with DOA5Installer.
 - Console stages in Arcade, Time Attack and Survival.
 
 ## Build
