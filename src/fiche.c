@@ -7,12 +7,14 @@
 #define RVA_NCP_SERIALIZE   0x515540
 #define NCP_MARQUE          0x116
 #define NCP_TYPE_CONNEXION  0x117
+#define NCP_MARQUE2         0xEF
 #define RVA_FICHES          0xF82950
 #define RVA_FICHES_PRET     0xF83BF4
 #define FICHES_TABLE        0xD8
 #define FICHE_TAILLE        0x10C
 #define FICHE_ID            4
 #define FICHE_MARQUE        0x10A
+#define FICHE_MARQUE2       0xE3
 #define RVA_SESSION_OBTENIR 0x0C8B90
 #define SESSION_MEMBRES     0xD4
 #define MEMBRE_TAILLE       0x1C
@@ -23,6 +25,13 @@
 #define MARQUE_MASQUE       0xF0
 #define MARQUE_PROTOCOLE2   0x08
 #define MARQUE_NIVEAUX      0x07
+#define MARQUE2_BASE        0xC0
+#define MARQUE2_MASQUE      0xE0
+#define MARQUE2_NIVEAUX     0x03
+#define MARQUE2_CORRECTIFS  0x04
+
+static int g_correctifs;
+void Fiche_Correctifs(int actifs) { g_correctifs = actifs != 0; }
 
 static uint8_t *base;
 static void Note(const char *libelle, long a, long b, long c) { Journal("Fiche", libelle, a, b, c); }
@@ -34,9 +43,10 @@ static int Lisible(const void *p, size_t n)
     return (const uint8_t *)p + n <= (const uint8_t *)m.BaseAddress + m.RegionSize;
 }
 
-static uint8_t Marque_Octet(void)
+static uint8_t Marque_Octet(int packs)
 {
-    return (uint8_t)(MARQUE_BASE | MARQUE_PROTOCOLE2 | (StageSlots_Packs() & MARQUE_NIVEAUX));
+    const uint8_t proto2 = (packs >> 3) ? 0 : MARQUE_PROTOCOLE2;
+    return (uint8_t)(MARQUE_BASE | proto2 | (packs & MARQUE_NIVEAUX));
 }
 typedef uint8_t (__thiscall *Serialiser_t)(void *paquet, void *flux);
 static Serialiser_t o_serialiser;
@@ -45,33 +55,60 @@ static uint8_t __fastcall hk_serialiser(void *paquet, void *edx, void *flux)
 {
     (void)edx;
     uint8_t *p = (uint8_t *)paquet;
-    const uint8_t origine = p[NCP_MARQUE];
-    p[NCP_MARQUE] = Marque_Octet();
+    const uint8_t origine = p[NCP_MARQUE], origine2 = p[NCP_MARQUE2];
+    const int packs = StageSlots_Packs();
+    p[NCP_MARQUE] = Marque_Octet(packs);
+    p[NCP_MARQUE2] = (uint8_t)(MARQUE2_BASE | ((packs >> 3) & MARQUE2_NIVEAUX) | (g_correctifs ? MARQUE2_CORRECTIFS : 0));
     const uint8_t type = WiFiWired_Type();
     if (type) p[NCP_TYPE_CONNEXION] = type;
-    if (InterlockedIncrement(&g_envois) <= 3) Note("envoi origine/marque/type", origine, p[NCP_MARQUE], type);
+    if (InterlockedIncrement(&g_envois) <= 3) {
+        Note("envoi origine/marque/type", origine, p[NCP_MARQUE], type);
+        Note("envoi origine2_non_nul/marque2", origine2 != 0, p[NCP_MARQUE2], 0);
+    }
     return o_serialiser(paquet, flux);
+}
+
+static const uint8_t *Fiche(int id)
+{
+    if (!base || !(base[RVA_FICHES_PRET] & 1) || id < 0 || id >= NB_PLACES) return NULL;
+    const uint8_t *t = base + RVA_FICHES + FICHES_TABLE;
+    if (!Lisible(t, NB_PLACES * FICHE_TAILLE)) return NULL;
+    for (int i = 0; i < NB_PLACES; i++) {
+        const uint8_t *f = t + i * FICHE_TAILLE;
+        int32_t fid; memcpy(&fid, f + FICHE_ID, 4);
+        if (fid == id) return f;
+    }
+    return NULL;
 }
 
 int Marque_DuMembre(int id)
 {
-    if (!base || !(base[RVA_FICHES_PRET] & 1) || id < 0 || id >= NB_PLACES) return -1;
-    const uint8_t *t = base + RVA_FICHES + FICHES_TABLE;
-    if (!Lisible(t, NB_PLACES * FICHE_TAILLE)) return -1;
-    for (int i = 0; i < NB_PLACES; i++) {
-        const uint8_t *f = t + i * FICHE_TAILLE;
-        int32_t fid; memcpy(&fid, f + FICHE_ID, 4);
-        if (fid != id) continue;
-        const uint8_t m = f[FICHE_MARQUE];
-        return (m & MARQUE_MASQUE) == MARQUE_BASE ? m : 0;
-    }
-    return -1;
+    const uint8_t *f = Fiche(id);
+    if (!f) return -1;
+    const uint8_t m = f[FICHE_MARQUE];
+    return (m & MARQUE_MASQUE) == MARQUE_BASE ? m : 0;
+}
+
+static int Niveaux_DuMembre(int id)
+{
+    const int m = Marque_DuMembre(id);
+    if (m <= 0) return -1;
+    const uint8_t m2 = Fiche(id)[FICHE_MARQUE2];
+    if ((m2 & MARQUE2_MASQUE) == MARQUE2_BASE) return (m & MARQUE_NIVEAUX) | ((m2 & MARQUE2_NIVEAUX) << 3);
+    return (m & MARQUE_PROTOCOLE2) ? (m & MARQUE_NIVEAUX) : -1;
+}
+
+static int Correctifs_DuMembre(int id)
+{
+    if (Marque_DuMembre(id) <= 0) return 0;
+    const uint8_t m2 = Fiche(id)[FICHE_MARQUE2];
+    return (m2 & MARQUE2_MASQUE) == MARQUE2_BASE && (m2 & MARQUE2_CORRECTIFS);
 }
 
 typedef void *(__cdecl *SessionObtenir_t)(void);
 typedef int (__cdecl *IdLocal_t)(void);
 
-static int CompterMembres(int niveaux, int *marques)
+static int CompterMembres(int niveaux, int *marques, int correctifs)
 {
     *marques = 0;
     const uint8_t *s = (const uint8_t *)((SessionObtenir_t)(base + RVA_SESSION_OBTENIR))();
@@ -82,17 +119,16 @@ static int CompterMembres(int niveaux, int *marques)
         int32_t id; memcpy(&id, s + SESSION_MEMBRES + i * MEMBRE_TAILLE, 4);
         if (id < 0 || id >= NB_PLACES || id == moi) continue;
         n++;
-        const int m = Marque_DuMembre(id);
-        if (m > 0 && (!niveaux || ((m & MARQUE_PROTOCOLE2) && (m & MARQUE_NIVEAUX) == niveaux))) (*marques)++;
+        if (correctifs ? Correctifs_DuMembre(id) : niveaux ? Niveaux_DuMembre(id) == niveaux : Marque_DuMembre(id) > 0) (*marques)++;
     }
     return n;
 }
 
 int Marque_TousNiveaux(void)
 {
-    const int niveaux = base ? (StageSlots_Packs() & MARQUE_NIVEAUX) : 0;
+    const int niveaux = base ? StageSlots_Packs() : 0;
     if (!niveaux) return 0;
-    int marques; const int n = CompterMembres(niveaux, &marques);
+    int marques; const int n = CompterMembres(niveaux, &marques, 0);
     static int dernier = -2, dernierN = -2, dernierM = -2;
     const int ok = n > 0 && marques == n;
     if (ok != dernier || n != dernierN || marques != dernierM) {
@@ -105,7 +141,15 @@ int Marque_TousNiveaux(void)
 int Marque_TousDOA5Tools(void)
 {
     if (!base) return 0;
-    int marques; const int n = CompterMembres(0, &marques);
+    int marques; const int n = CompterMembres(0, &marques, 0);
+    return n > 0 && marques == n;
+}
+
+int Marque_TousCorrectifs(void)
+{
+    if (!base || !g_correctifs) return 0;
+    int marques; const int n = CompterMembres(0, &marques, 1);
+    Note("correctifs tous/membres/marques", n > 0 && marques == n, n, marques);
     return n > 0 && marques == n;
 }
 
@@ -120,7 +164,7 @@ static DWORD WINAPI Installer(LPVOID p)
     o_serialiser = (Serialiser_t)*slot;
     InterlockedExchange((volatile LONG *)slot, (LONG)(uintptr_t)hk_serialiser);
     VirtualProtect(slot, sizeof(void *), ancien, &ancien);
-    Note("pose", Marque_Octet(), 0, 0);
+    Note("pose", Marque_Octet(StageSlots_Packs()), 0, 0);
     return 0;
 }
 

@@ -4,7 +4,7 @@
 #include <string.h>
 #include "commun.h"
 
-#define VERSION_MODULE "1.0"
+#define VERSION_MODULE "1.1"
 
 #define ATTENDU_DATE    0x5a1faa36
 #define ATTENDU_TAILLE  0x021f8000
@@ -84,6 +84,27 @@ static int g_libelleQuit = 1;
 static volatile LONG g_menuForce;
 
 static void Note(const char *libelle, long a, long b, long c) { Journal("Rematch", libelle, a, b, c); }
+
+#define RVA_FLUX_SPECTATEUR 0xF8F208
+#define FLUX_BIT_ZONE       0xD6C
+static volatile LONG g_fluxPret;
+static uint32_t g_dernierRole;
+static void Spectateur_Tic(void)
+{
+    if (!g_fluxPret) return;
+    volatile uint32_t *flux = (volatile uint32_t *)(g_base + RVA_FLUX_SPECTATEUR);
+    const uint32_t role = flux[0];
+    {
+        static uint32_t a = 0xFFFFFFFF, b = 0xFFFFFFFF, r = 0xFFFFFFFF;
+        const uint32_t na = *(volatile uint32_t *)(g_base + 0xDD94D8), nb = *(volatile uint32_t *)(g_base + 0xDD94D4);
+        if (na != a || nb != b || role != r) { Note("mesure etat/sous_etat/role", (long)na, (long)nb, (long)role); a = na; b = nb; r = role; }
+    }
+    if (role) { g_dernierRole = role; return; }
+    if (g_dernierRole == 5 && flux[FLUX_BIT_ZONE / 4]) {
+        flux[FLUX_BIT_ZONE / 4] = 0;
+        Note("spectateur bit_de_zone_remis", 0, 0, 0);
+    }
+}
 
 typedef struct { int actif; DWORD debut; } Minuteur;
 static int Demarrer(Minuteur *m)
@@ -325,6 +346,7 @@ static DWORD WINAPI Installer(LPVOID p)
     (void)p;
     g_base = (uint8_t *)GetModuleHandleA(NULL);
     if (!VersionOk()) { Note("refus_version_game_exe", 0, 0, 0); return 0; }
+    InterlockedExchange(&g_fluxPret, 1);
 
     int pret = 0;
     for (int t = 0; t < 600 && !pret; t++) {
@@ -361,6 +383,7 @@ void Rematch_Demarrer(void)
     g_tirage = Reglage("Rematch", "Tirage", 1) != 0;
     g_libelleQuit = Reglage("Rematch", "LibelleQuit", 1) != 0;
     Note("debut " VERSION_MODULE, 0, 0, 0);
+    AjouterTic(Spectateur_Tic);
     HANDLE t = CreateThread(NULL, 0, Installer, NULL, 0, NULL);
     if (t) CloseHandle(t);
 }

@@ -12,23 +12,21 @@
 
 typedef struct {const WCHAR *section,*cle,*valeur;} Reglage_t;
 static const Reglage_t CONFIG[]={
-    {L"Tiles",L"Tile18",L"0x06|2"},
     {L"Tiles",L"Tile25",L"0x2b|1|bonus"},
     {L"Tiles",L"Tile26",L"0x2c|2|bonus"},
     {L"Tiles",L"Tile27",L"0x12|1|bonus"},
     {L"Tiles",L"Tile28",L"0x43|2|bonus"},
     {L"Tiles",L"Tile29",L"0x1c|1|bonus"},
-    {L"Stages",L"0x07",L"LAB (DESTROYED)|lab_destroyed.png"},
     {L"Stages",L"0x2b",L"#0x1b0026|danger_zone.raw8"},
     {L"Stages",L"0x2c",L"#0x1b0027|crimson.raw8"},
     {L"Stages",L"0x2d",L"#0x1b0027|crimson_2.raw8"},
-    {L"Stages",L"0x12",L"FIREWORKS|fireworks.png"},
+    {L"Stages",L"0x12",L"FIREWORKS|fireworks.raw8"},
     {L"Stages",L"0x17",L"AZUCHI|azuchi.raw8"},
     {L"Stages",L"0x43",L"AZUCHI|azuchi.raw8"},
     {L"Stages",L"0x44",L"AZUCHI|azuchi_2.raw8"},
     {L"Aliases",L"0x43",L"0x17"},
     {L"Aliases",L"0x44",L"0x20"},
-    {L"Stages",L"0x1c",L"ATTACK ON TITAN|attack_on_titan.png"},
+    {L"Stages",L"0x1c",L"ATTACK ON TITAN|attack_on_titan.raw8"},
     {L"Advanced",L"ExtraStages",L"0x12,0x17,0x1c,0x20"},
     {NULL,NULL,NULL}
 };
@@ -116,6 +114,9 @@ static BYTE original_variants[TILE_COUNT];
 static DWORD fnv1a(const void *p,size_t n){const BYTE *b=p;DWORD h=0x811C9DC5u;for(size_t i=0;i<n;i++){h^=b[i];h*=0x01000193u;}return h;}
 static DWORD tile_index[MAX_TILES];
 static BYTE tile_variants[MAX_TILES];
+
+static DWORD table_index[TILE_COUNT];
+static BYTE table_variants[TILE_COUNT];
 static int tile_total=EXT_COUNT;
 static BOOL console_tiles;
 
@@ -193,6 +194,16 @@ static int load_tiles(void) {
         NOTE("tuile",at,index,variants);
     }
     tile_total=w;
+
+    memcpy(table_index,tile_index,sizeof(table_index));
+    memcpy(table_variants,tile_variants,sizeof(table_variants));
+    if(w>TILE_COUNT && tile_index[TILE_COUNT-1]==0x1b && Reglage("StageSlots","PS4Order",1)) {
+        DWORD dojo=tile_index[TILE_COUNT-1];BYTE v=tile_variants[TILE_COUNT-1];
+        memmove(tile_index+TILE_COUNT-1,tile_index+TILE_COUNT,(w-TILE_COUNT)*sizeof(DWORD));
+        memmove(tile_variants+TILE_COUNT-1,tile_variants+TILE_COUNT,w-TILE_COUNT);
+        tile_index[w-1]=dojo;tile_variants[w-1]=v;
+        NOTE("ordre_ps4_dojo_en_dernier",w-1,0,0);
+    }
     return changes;
 }
 
@@ -1041,9 +1052,14 @@ static BOOL fichier_present(const WCHAR *nom) {
     swprintf(c,MAX_PATH,L"%lsscripts\\%ls",p,nom);if(GetFileAttributesW(c)!=INVALID_FILE_ATTRIBUTES)return TRUE;
     swprintf(c,MAX_PATH,L"%ls%ls",p,nom);return GetFileAttributesW(c)!=INVALID_FILE_ATTRIBUTES;
 }
+
+static HMODULE module_maps(const WCHAR *ancien) {
+    HMODULE m=GetModuleHandleW(ancien);
+    return m?m:GetModuleHandleW(L"DOA5LR-Maps.asi");
+}
 static void attendre_modules_maps(void) {
-    static const WCHAR *const noms[3]={L"DOA5LR-Crimson.asi",L"DOA5LR-DNZ-Complete.asi",L"DOA5LR-ExtraStages.asi"};
-    for(int i=0;i<3;i++) {
+    static const WCHAR *const noms[4]={L"DOA5LR-Crimson.asi",L"DOA5LR-DNZ-Complete.asi",L"DOA5LR-ExtraStages.asi",L"DOA5LR-Maps.asi"};
+    for(int i=0;i<4;i++) {
         if(!fichier_present(noms[i]))continue;
         int n=0;while(!GetModuleHandleW(noms[i]) && n++<120)Sleep(250);
         NOTE("module_maps_charge",i,GetModuleHandleW(noms[i])!=NULL,n);
@@ -1051,7 +1067,7 @@ static void attendre_modules_maps(void) {
 }
 static void wait_map_modules(void) {
     attendre_modules_maps();
-    HMODULE extra=GetModuleHandleW(L"DOA5LR-ExtraStages.asi");
+    HMODULE extra=module_maps(L"DOA5LR-ExtraStages.asi");
     if(extra) {
         extra_state=(int(__cdecl*)(void))GetProcAddress(extra,"ExtraStagesState");
         extra_ready=(int(__cdecl*)(int))GetProcAddress(extra,"ExtraStagesHostReady");
@@ -1062,8 +1078,8 @@ static void wait_map_modules(void) {
 
         }
     }
-    if(GetModuleHandleW(L"DOA5LR-Crimson.asi") || GetModuleHandleW(L"DOA5LR-DNZ-Complete.asi")) {
-        BYTE want=GetModuleHandleW(L"DOA5LR-Crimson.asi")?27:26;
+    if(module_maps(L"DOA5LR-Crimson.asi") || module_maps(L"DOA5LR-DNZ-Complete.asi")) {
+        BYTE want=module_maps(L"DOA5LR-Crimson.asi")?27:26;
         int n=0;while(*RVA(0xb280c3)!=want && n++<1200)Sleep(250);
         Sleep(1500);
         NOTE("modules_maps_cases",*RVA(0xb280c3),0,0);
@@ -1252,7 +1268,7 @@ static DWORD WINAPI worker(void *unused) {
                 }
             }
             if(!online) {
-                if(changes && !tables_applied && (tables_applied=write_tables(tile_index,tile_variants)))NOTE("cases_hors_ligne",0,0,0);
+                if(changes && !tables_applied && (tables_applied=write_tables(table_index,table_variants)))NOTE("cases_hors_ligne",0,0,0);
                 if(console_tiles && !patches_applied) {
                     patches_applied=write_patches(TRUE);
                     if(patches_applied)NOTE("cases_console",tile_total,0,0);
@@ -1269,10 +1285,11 @@ static DWORD WINAPI worker(void *unused) {
 
 int StageSlots_Packs(void) {
     if(!console_tiles || !groups_shown() || live_count<27)return 0;
-    if(extra_ready && (extra_ready(0x12) || extra_ready(0x1c)))return 0;
     int p=1;
     if(extra_state && extra_state()==1)p|=2;
     if(extra_ready && extra_ready(0x17) && extra_ready(0x20))p|=4;
+    if(extra_ready && extra_ready(0x12))p|=8;
+    if(extra_ready && extra_ready(0x1c))p|=16;
     return p;
 }
 int StageSlots_MapsActives(void) {return StageSlots_Packs()!=0;}

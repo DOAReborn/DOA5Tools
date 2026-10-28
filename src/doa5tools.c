@@ -5,7 +5,7 @@
 #include <d3d9.h>
 #include "commun.h"
 
-#define VERSION_DOA5TOOLS "1.3"
+#define VERSION_DOA5TOOLS "1.6"
 const wchar_t TEXTE_VERSION_DOA5TOOLS[] = L"DOA5Tools " VERSION_DOA5TOOLS;
 
 static char g_ini[MAX_PATH];
@@ -40,10 +40,62 @@ void **D3D9_Methodes(void)
     return g_d3d9Vt;
 }
 
+#define RVA_GRAPHIQUE 0x2080938
+static SurDevice_t g_surDevice[8];
+static int g_nbSurDevice;
+static IDirect3DDevice9 *g_deviceJeu;
+static int Lisible4(const void *p)
+{
+    MEMORY_BASIC_INFORMATION m;
+    if (!p || !VirtualQuery(p, &m, sizeof m) || m.State != MEM_COMMIT || (m.Protect & (PAGE_NOACCESS | PAGE_GUARD))) return 0;
+    return (const BYTE *)p + 4 <= (const BYTE *)m.BaseAddress + m.RegionSize;
+}
+static IDirect3DDevice9 *DeviceDuJeu(void)
+{
+    BYTE *base = (BYTE *)GetModuleHandleW(NULL);
+    BYTE *g = Lisible4(base + RVA_GRAPHIQUE) ? *(BYTE **)(base + RVA_GRAPHIQUE) : NULL;
+    if (!g || !Lisible4(g + 0xC4) || !Lisible4(g + 0xF8)) return NULL;
+    void *d3d = *(void **)(g + 0xF8), *dev = *(void **)(g + 0xC4);
+    if (!d3d || !dev || !Lisible4(d3d) || !Lisible4(dev)) return NULL;
+    void **vt = D3D9_Methodes();
+    if (!vt || *(void ***)d3d != vt) return NULL;
+    void **dvt = *(void ***)dev;
+    if (!Lisible4(dvt) || !Lisible4(dvt + 17)) return NULL;
+    return (IDirect3DDevice9 *)dev;
+}
+void D3D9_SurDevice(SurDevice_t f)
+{
+    IDirect3DDevice9 *d;
+    EnterCriticalSection(&g_cs);
+    if (g_nbSurDevice < 8) g_surDevice[g_nbSurDevice++] = f;
+    d = g_deviceJeu;
+    LeaveCriticalSection(&g_cs);
+    if (d) f(d);
+}
+static DWORD WINAPI GuetterDevice(LPVOID p)
+{
+    (void)p;
+    for (int n = 0; n < 1800; n++) {
+        IDirect3DDevice9 *d = DeviceDuJeu();
+        if (d) {
+            SurDevice_t liste[8]; int k;
+            EnterCriticalSection(&g_cs);
+            g_deviceJeu = d; k = g_nbSurDevice; memcpy(liste, g_surDevice, sizeof liste);
+            LeaveCriticalSection(&g_cs);
+            for (int i = 0; i < k; i++) liste[i](d);
+            Journal("DOA5Tools", "device_du_jeu ms/modules", (long)(GetTickCount() - g_t0), k, 0);
+            return 0;
+        }
+        Sleep(100);
+    }
+    Journal("DOA5Tools", "device_du_jeu_absent", 0, 0, 0);
+    return 0;
+}
+
 #define RVA_IAT_RUNCALLBACKS 0x9663DC
 #define RVA_KTOL_PRINTF      0x846010
 static const uint8_t KTOL_PRINTF_BYTES[] = {0x55, 0x8B, 0xEC, 0x81, 0xEC, 0x04, 0x02, 0x00, 0x00};
-#define NB_TICS 8
+#define NB_TICS 12
 static Tic_t g_tics[NB_TICS];
 static volatile LONG g_nbTics;
 void AjouterTic(Tic_t f)
@@ -105,14 +157,30 @@ BOOL WINAPI DllMain(HINSTANCE h, DWORD raison, LPVOID r)
     if (Reglage("DOA5Tools", "JoinFix", 1)) JoinFix_Demarrer();
     if (Reglage("DOA5Tools", "Rematch", 1)) Rematch_Demarrer();
     if (Reglage("DOA5Tools", "WiFiWired", 1)) WiFiWired_Demarrer();
-    if (Reglage("DOA5Tools", "60fps", 1)) Fps60_Demarrer();
+
+    if (Reglage("DOA5Tools", "HighFps", 0)) HighFps_Demarrer();
     if (Reglage("DOA5Tools", "ReplayMenu", 1)) ReplayMenu_Demarrer();
     if (Reglage("DOA5Tools", "LobbyChat", 1)) LobbyChat_Demarrer();
     if (Reglage("DOA5Tools", "StageSlots", 1)) StageSlots_Demarrer();
     if (Reglage("DOA5Tools", "IntroOutroSkip", 1)) IntroOutroSkip_Demarrer();
     if (Reglage("DOA5Tools", "LobbyName", 1)) LobbyName_Demarrer();
+
+    {
+        const int aot = Reglage("DOA5Tools", "AoTFix", 1), reprise = Reglage("DOA5Tools", "ConsoleRestart", 1);
+        if (aot) AoTFix_Demarrer();
+        if (reprise) ConsoleRestart_Demarrer();
+        Fiche_Correctifs(aot && reprise);
+    }
+    if (Reglage("DOA5Tools", "ArcadeConsole", 1)) ArcadeConsole_Demarrer();
+    if (Reglage("DOA5Tools", "ConnFilter", 1)) ConnFilter_Demarrer();
+    if (Reglage("DOA5Tools", "ModOptions", 1)) ModOptions_Demarrer();
+    if (Reglage("DOA5Tools", "Gamepad", 1)) Gamepad_Demarrer();
     VersionTitre_Demarrer();
     Fiche_Demarrer();
+    {
+        HANDLE t = CreateThread(NULL, 0, GuetterDevice, NULL, 0, NULL);
+        if (t) CloseHandle(t);
+    }
     if (g_nbTics) {
         HANDLE t = CreateThread(NULL, 0, PoserTic, NULL, 0, NULL);
         if (t) CloseHandle(t);

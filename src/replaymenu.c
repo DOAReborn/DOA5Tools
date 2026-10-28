@@ -1336,16 +1336,24 @@ static HRESULT WINAPI present_hook(IDirect3DDevice9 *d,const RECT *a,const RECT 
     if(menu_shown && GetTickCount()-menu_tick<200)draw_overlay(d);
     return orig?orig(d,a,b,w,r):D3D_OK;
 }
-static void hook_device(IDirect3DDevice9 *dev) {
+static void hook_device_(IDirect3DDevice9 *dev) {
     void **vt=*(void***)dev;DWORD old;
     for(LONG i=0;i<dev_hook_count;i++)if(dev_hooks[i].vt==vt)return;
     if(dev_hook_count>=4 || vt[17]==(void*)present_hook)return;
     if(VirtualProtect(&vt[17],4,PAGE_EXECUTE_READWRITE,&old)) {
-        dev_hooks[dev_hook_count].vt=vt;dev_hooks[dev_hook_count].present=(Present_t)vt[17];
+        LONG n=dev_hook_count;dev_hooks[n].vt=vt;
+        void *avant;do{avant=vt[17];dev_hooks[n].present=(Present_t)avant;}while(InterlockedCompareExchangePointer(&vt[17],(void*)present_hook,avant)!=avant);
         InterlockedIncrement(&dev_hook_count);
-        vt[17]=(void*)present_hook;VirtualProtect(&vt[17],4,old,&old);
+        VirtualProtect(&vt[17],4,old,&old);
         JOURNAL("affichage_accroche",dev_hook_count,0,0);
     }
+}
+
+static void hook_device(IDirect3DDevice9 *dev){
+    static volatile LONG verrou;
+    while(InterlockedExchange(&verrou,1))Sleep(0);
+    hook_device_(dev);
+    InterlockedExchange(&verrou,0);
 }
 static HRESULT WINAPI createdevice_hook(IDirect3D9 *d3d,UINT a,D3DDEVTYPE t,HWND w,DWORD f,D3DPRESENT_PARAMETERS *pp,IDirect3DDevice9 **out) {
     HRESULT hr=createdevice_original(d3d,a,t,w,f,pp,out);
@@ -1357,6 +1365,7 @@ static void install_d3d_hooks(void) {
     if(!vt){JOURNAL("d3d9_indisponible",0,0,0);return;}
     {DWORD o_;VirtualProtect(&vt[16],4,PAGE_EXECUTE_READWRITE,&o_);
         for(;;){void *cur=vt[16];createdevice_original=(CreateDevice_t)cur;if(InterlockedCompareExchangePointer(&vt[16],(void*)createdevice_hook,cur)==cur)break;}}
+    D3D9_SurDevice((SurDevice_t)hook_device);
 }
 
 static DWORD WINAPI worker(void *u) {

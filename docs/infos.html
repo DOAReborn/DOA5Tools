@@ -33,39 +33,60 @@
     <li>Adds the missing <strong>Lobby</strong> entry to the Online menu, with pretty much every feature available.</li>
     <li>Working invitations. Press <code>F7</code> in a lobby to copy your room link to the clipboard.</li>
     <li>Text chat: <code>Enter</code> (keyboard) or <code>Start</code> (controller) in a lobby. Everyone in the lobby needs DOA5Tools 1.2 or later.</li>
+    <li>CONNECTION setting when creating a lobby: players with a worse connection can’t join.</li>
+    <li>The host’s Kick button works, and kicked players can’t come back to that lobby.</li>
   </ul>
   <ul class="fr">
     <li>Ajoute l’entrée <strong>Salon</strong> manquante au menu En ligne, avec presque toutes ses fonctions.</li>
     <li>Invitations fonctionnelles. <code>F7</code> dans un salon copie le lien du salon dans le presse-papiers.</li>
     <li>Chat texte : <code>Entrée</code> (clavier) ou <code>Start</code> (manette) dans un salon. Tout le salon doit avoir DOA5Tools 1.2 ou plus récent.</li>
+    <li>Réglage CONNECTION à la création d’un salon : les joueurs moins bien connectés ne peuvent pas entrer.</li>
+    <li>Le bouton Expulser de l’hôte fonctionne, et un joueur expulsé ne peut pas revenir dans ce salon.</li>
   </ul>
   <h3>Rematch</h3>
   <ul class="en">
-    <li>With only two players queuing in a lobby, a <em>Rematch</em> menu shows up at the end of a fight so you can play again right away.</li>
+    <li>With only two players queuing in a lobby (both with DOA5Tools 1.3+), a <em>Rematch</em> menu shows up at the end of a fight so you can play again right away.</li>
     <li>If a player leaves the menu or a third player joins the queue, the room goes back to normal.</li>
     <li>Spectators can watch rematches with the lobby’s built-in spectator mode (do not queue).</li>
   </ul>
   <ul class="fr">
-    <li>Quand seuls deux joueurs sont dans la file d’un salon, un menu <em>Rematch</em> s’affiche en fin de combat pour rejouer tout de suite.</li>
+    <li>Quand seuls deux joueurs sont dans la file d’un salon (tous deux avec DOA5Tools 1.3+), un menu <em>Rematch</em> s’affiche en fin de combat pour rejouer tout de suite.</li>
     <li>Si un joueur quitte le menu ou qu’un troisième rejoint la file, le salon reprend son fonctionnement normal.</li>
     <li>Les spectateurs peuvent suivre les rematchs avec le mode spectateur du salon (sans entrer dans la file).</li>
   </ul>
+  <h3 class="en">Console stages</h3><h3 class="fr">Stages console</h3>
+  <ul class="en">
+    <li>Attack on Titan: no more frozen round after the Titan’s Power Blow; wall and K.O. like on PS4 (online: everyone needs DOA5Tools 1.5).</li>
+    <li>PS4 restart points from round 2 on the console stages.</li>
+    <li>Console stages in Arcade, Time Attack and Survival.</li>
+  </ul>
+  <ul class="fr">
+    <li>Attack on Titan : plus de round figé après le Power Blow du Titan ; mur et K.O. comme sur PS4 (en ligne : tout le monde doit avoir DOA5Tools 1.5).</li>
+    <li>Points de reprise PS4 à partir du round 2 sur les stages console.</li>
+    <li>Stages console en Arcade, Time Attack et Survival.</li>
+  </ul>
   <h3 class="en">Miscellaneous</h3><h3 class="fr">Divers</h3>
   <ul class="en">
+    <li><strong>EXTRA OPTIONS</strong> menu in the main menu: turn DOA5Tools, rollback and DOA5Extra features on or off.</li>
     <li>Shows your real connection type to others: <code>[n]</code> wired, <code>&lt;n&gt;</code> Wi-Fi.</li>
     <li>Borderless fullscreen (<code>F11</code> cycles between modes).</li>
     <li>Skips the startup logos and intro.</li>
     <li>Runs at your desktop resolution, ultrawide and other screens included (21:9, 32:9, 16:10…).</li>
-    <li>60 FPS in menus and offline modes (requires AutoLink).</li>
+    <li>Experimental 120/144 fps in fights (off by default, F3).</li>
     <li>Replay list in rows (names, characters, stage, date), filters by character (L1) and player (R1), archives (Square).</li>
+    <li>Skips character intros and the victory pose (Cross / Start).</li>
+    <li>Extra stage slots: the PS4 stages installed with DOA5Installer (online and in Random when everyone has them).</li>
   </ul>
   <ul class="fr">
+    <li>Menu d’options des mods dans le menu principal : activer ou couper les fonctions de DOA5Tools, du rollback et de DOA5Extra.</li>
     <li>Affiche aux autres votre vrai type de connexion : <code>[n]</code> filaire, <code>&lt;n&gt;</code> Wi-Fi.</li>
     <li>Plein écran fenêtré (<code>F11</code> passe d’un mode à l’autre).</li>
     <li>Passe les logos et l’intro au démarrage.</li>
     <li>Tourne à la résolution du bureau, écrans ultrawide et autres formats compris (21:9, 32:9, 16:10…).</li>
-    <li>60 FPS dans les menus et les modes hors ligne (nécessite AutoLink).</li>
+    <li>120/144 fps expérimental en combat (coupé par défaut, F3).</li>
     <li>Liste des replays en lignes (pseudos, persos, stage, date), filtres par perso (L1) et par joueur (R1), archives (Carré).</li>
+    <li>Passe l’intro des persos et la pose de victoire (Croix / Start).</li>
+    <li>Emplacements de stages en plus : les stages PS4 installés par DOA5Installer (en ligne et au Random si tout le monde les a).</li>
   </ul>
 </section>
 
@@ -73,16 +94,18 @@
   <h2 class="en">Install</h2><h2 class="fr">Installation</h2>
   <ol class="en">
     <li>A clean Steam install of the game is recommended.</li>
-    <li>Extract the zip next to <code>game.exe</code>: <code>dinput8.dll</code> (Ultimate ASI Loader), <code>DOA5Tools.asi</code> and <code>DOA5Tools.ini</code>.</li>
+    <li>Extract <a href="/DOA5Installer/">DOA5Installer</a> next to <code>game.exe</code>.</li>
+    <li>Run <code>DOA5Installer.exe</code>, click <strong>Add zips</strong> (<code>DOA5Tools.zip</code> and the other DOAReborn zips), then <strong>Install</strong>.</li>
     <li>Launch the game.</li>
   </ol>
   <ol class="fr">
     <li>Une installation Steam propre du jeu est conseillée.</li>
-    <li>Extraire le zip à côté de <code>game.exe</code> : <code>dinput8.dll</code> (Ultimate ASI Loader), <code>DOA5Tools.asi</code> et <code>DOA5Tools.ini</code>.</li>
+    <li>Extraire <a href="/DOA5Installer/">DOA5Installer</a> à côté de <code>game.exe</code>.</li>
+    <li>Lancer <code>DOA5Installer.exe</code>, cliquer sur <strong>Add zips</strong> (<code>DOA5Tools.zip</code> et les autres zips DOAReborn), puis <strong>Install</strong>.</li>
     <li>Lancer le jeu.</li>
   </ol>
-  <p class="note en">Fully compatible with AutoLink. To uninstall, delete these files.</p>
-  <p class="note fr">Entièrement compatible avec AutoLink. Pour désinstaller, supprimer ces fichiers.</p>
+  <p class="note en">Manual install: extract the zip next to <code>game.exe</code>. Fully compatible with AutoLink. To uninstall, use DOA5Installer.</p>
+  <p class="note fr">Installation manuelle : extraire le zip à côté de <code>game.exe</code>. Entièrement compatible avec AutoLink. Pour désinstaller, passer par DOA5Installer.</p>
 
   <h3>Linux / Steam Deck (Proton)</h3>
   <p class="en">In Steam: right-click the game → <em>Properties</em> → <em>Launch options</em>, and paste:</p>
@@ -94,25 +117,29 @@
 
 <section>
   <h2 class="en">Settings</h2><h2 class="fr">Réglages</h2>
-  <p class="en">Everything is in <code>DOA5Tools.ini</code>. Set a feature to <code>0</code> in <code>[DOA5Tools]</code> to turn it off:</p>
-  <p class="fr">Tout se règle dans <code>DOA5Tools.ini</code>. Mettre une fonction à <code>0</code> dans <code>[DOA5Tools]</code> pour la désactiver :</p>
+  <p class="en">Turn features on or off in the <strong>EXTRA OPTIONS</strong> menu (main menu), or set them to <code>0</code> in <code>[DOA5Tools]</code> of <code>DOA5Tools.ini</code>:</p>
+  <p class="fr">Activer ou désactiver les fonctions dans le menu <strong>EXTRA OPTIONS</strong> (menu principal), ou les mettre à <code>0</code> dans <code>[DOA5Tools]</code> de <code>DOA5Tools.ini</code> :</p>
   <pre><code>[DOA5Tools]
 Lobby=1
 JoinFix=1
 Rematch=1
 WiFiWired=1
 Borderless=1
-60fps=1
+HighFps=0
 Skip=1
 Ultrawide=1
 ReplayMenu=1
-LobbyChat=1</code></pre>
+LobbyChat=1
+StageSlots=1
+IntroOutroSkip=1
+LobbyName=1</code></pre>
   <ul class="en">
     <li>F7 in a lobby copies your room link.</li>
     <li><code>[Rematch] Tirage</code>: random characters/stage on rematch, <code>1</code> = new draw, <code>0</code> = same as last fight.</li>
     <li><code>[Borderless] Mode</code>: <code>2</code> borderless, <code>1</code> window, <code>0</code> game setting. F11 cycles the modes.</li>
     <li><code>[Ultrawide] Width</code>/<code>Height</code>: <code>0</code> = your desktop resolution.</li>
     <li><code>[ReplayMenu] Recycle</code>: <code>1</code> = deleted replays go to a <code>REPLY_CORBEILLE</code> folder, <code>0</code> = erased for good.</li>
+    <li><code>[StageSlots] Extra</code>: <code>1</code> = PS4 stages shown (online: only if everyone has them).</li>
   </ul>
   <ul class="fr">
     <li>F7 dans un salon copie le lien du salon.</li>
@@ -120,6 +147,7 @@ LobbyChat=1</code></pre>
     <li><code>[Borderless] Mode</code> : <code>2</code> plein écran fenêtré, <code>1</code> fenêtre, <code>0</code> réglage du jeu. F11 fait défiler les modes.</li>
     <li><code>[Ultrawide] Width</code>/<code>Height</code> : <code>0</code> = résolution du bureau.</li>
     <li><code>[ReplayMenu] Recycle</code> : <code>1</code> = les replays supprimés vont dans un dossier <code>REPLY_CORBEILLE</code>, <code>0</code> = effacés pour de bon.</li>
+    <li><code>[StageSlots] Extra</code> : <code>1</code> = stages PS4 affichés (en ligne : seulement si tout le monde les a).</li>
   </ul>
 </section>
 
@@ -129,8 +157,8 @@ LobbyChat=1</code></pre>
   <p class="en">Check that <code>dinput8.dll</code> and <code>DOA5Tools.asi</code> are next to <code>game.exe</code>. On Linux, check the launch option above.</p>
   <p class="fr">Vérifier que <code>dinput8.dll</code> et <code>DOA5Tools.asi</code> sont à côté de <code>game.exe</code>. Sous Linux, vérifier l’option de lancement ci-dessus.</p>
   <h3 class="en">Do both players need the plugin?</h3><h3 class="fr">Les deux joueurs doivent-ils avoir le plugin ?</h3>
-  <p class="en">For Rematch, both players in the queue need DOA5Tools. For chat, everyone in the lobby.</p>
-  <p class="fr">Pour le rematch, les deux joueurs de la file doivent avoir DOA5Tools. Pour le chat, tout le salon.</p>
+  <p class="en">For Rematch, both players in the queue need DOA5Tools 1.3+. For chat and PS4 stages, everyone in the lobby.</p>
+  <p class="fr">Pour le rematch, les deux joueurs de la file doivent avoir DOA5Tools 1.3+. Pour le chat et les stages PS4, tout le salon.</p>
   <h3 class="en">Does it modify game files?</h3><h3 class="fr">Est-ce que ça modifie les fichiers du jeu ?</h3>
   <p class="en">No. Everything happens in memory while the game runs. Deleting the files restores the original game.</p>
   <p class="fr">Non. Tout se passe en mémoire pendant que le jeu tourne. Supprimer les fichiers rend le jeu d’origine.</p>
@@ -141,7 +169,7 @@ LobbyChat=1</code></pre>
   <ul>
     <li><span class="en">Ultrawide is a C port of</span><span class="fr">Ultrawide est un portage en C de</span> <a href="https://codeberg.org/Lyall/DOA5LRFix">DOA5LRFix</a> <span class="en">by</span><span class="fr">par</span> <strong>Lyall</strong> (MIT).</li>
     <li><a href="https://github.com/ThirteenAG/Ultimate-ASI-Loader">Ultimate ASI Loader</a> <span class="en">by</span><span class="fr">par</span> <strong>ThirteenAG</strong> (MIT).</li>
-    <li><span class="en">Lobby, JoinFix, WiFi-Wired, Borderless and 60fps are reworked from the DOA5LR-Salons pack</span><span class="fr">Lobby, JoinFix, WiFi-Wired, Borderless et 60fps sont repris du pack DOA5LR-Salons</span> (FGCsnow &amp; BonuStage).</li>
+    <li><span class="en">Everything else:</span><span class="fr">Tout le reste :</span> DOAReborn Project.</li>
   </ul>
 </section>
 

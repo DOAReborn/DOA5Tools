@@ -353,27 +353,41 @@ static HRESULT WINAPI present_hook(IDirect3DDevice9 *d,const RECT *a,const RECT 
     if(typing)draw_box(d);
     return orig?orig(d,a,b,w,r):D3D_OK;
 }
-static void hook_device(IDirect3DDevice9 *dev){
+static void hook_device_(IDirect3DDevice9 *dev){
     void **vt=*(void***)dev;DWORD old;
     for(LONG i=0;i<dev_hook_count;i++)if(dev_hooks[i].vt==vt)return;
     if(dev_hook_count>=4 || vt[17]==(void*)present_hook)return;
     if(VirtualProtect(&vt[17],4,PAGE_EXECUTE_READWRITE,&old)) {
-        dev_hooks[dev_hook_count].vt=vt;dev_hooks[dev_hook_count].present=(Present_t)vt[17];
+        LONG n=dev_hook_count;dev_hooks[n].vt=vt;
+        void *avant;do{avant=vt[17];dev_hooks[n].present=(Present_t)avant;}while(InterlockedCompareExchangePointer(&vt[17],(void*)present_hook,avant)!=avant);
         InterlockedIncrement(&dev_hook_count);
-        vt[17]=(void*)present_hook;VirtualProtect(&vt[17],4,old,&old);
+        VirtualProtect(&vt[17],4,old,&old);
         JOURNAL("affichage",1);
     }
+}
+
+static void hook_device(IDirect3DDevice9 *dev){
+    static volatile LONG verrou;
+    while(InterlockedExchange(&verrou,1))Sleep(0);
+    hook_device_(dev);
+    InterlockedExchange(&verrou,0);
 }
 static HRESULT WINAPI createdevice_hook(IDirect3D9 *d3d,UINT a,D3DDEVTYPE t,HWND w,DWORD f,D3DPRESENT_PARAMETERS *pp,IDirect3DDevice9 **out){
     HRESULT hr=createdevice_original(d3d,a,t,w,f,pp,out);
     if(SUCCEEDED(hr) && out && *out && t==D3DDEVTYPE_HAL){hook_device(*out);hook_messages(pp && pp->hDeviceWindow?pp->hDeviceWindow:w);}
     return hr;
 }
+
+static void sur_device(IDirect3DDevice9 *d){
+    D3DDEVICE_CREATION_PARAMETERS cp;hook_device(d);
+    if(SUCCEEDED(IDirect3DDevice9_GetCreationParameters(d,&cp)) && cp.hFocusWindow)hook_messages(cp.hFocusWindow);
+}
 static void install_d3d_hooks(void){
     void **vt=D3D9_Methodes();
     if(!vt){JOURNAL("affichage",0);return;}
     {DWORD o_;VirtualProtect(&vt[16],4,PAGE_EXECUTE_READWRITE,&o_);
         for(;;){void *cur=vt[16];createdevice_original=(CreateDevice_t)cur;if(InterlockedCompareExchangePointer(&vt[16],(void*)createdevice_hook,cur)==cur)break;}}
+    D3D9_SurDevice((SurDevice_t)sur_device);
 }
 
 void *lc_chat_original,*lc_lobby_original;
