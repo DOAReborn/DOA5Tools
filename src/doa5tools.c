@@ -5,7 +5,7 @@
 #include <d3d9.h>
 #include "commun.h"
 
-#define VERSION_DOA5TOOLS "1.6"
+#define VERSION_DOA5TOOLS "1.6.1"
 const wchar_t TEXTE_VERSION_DOA5TOOLS[] = L"DOA5Tools " VERSION_DOA5TOOLS;
 
 static char g_ini[MAX_PATH];

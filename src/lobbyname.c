@@ -315,14 +315,23 @@ static DWORD __attribute__((thiscall)) s7(void *t){DWORD r=((F0_t)ime_orig[7])(t
 
 static BOOL __attribute__((thiscall)) s11(void *t,DWORD a){BOOL r=((F1_t)ime_orig[11])(t,a);InterlockedExchange(&pending,a==1);return r;}
 static void install_ime(void){
-    DWORD eng=0;for(int n=0;n<600 && !eng;n++){eng=rd32(RVA(RVA_IMENGINE));if(!eng)Sleep(100);}
-    DWORD impl=eng?rd32((void*)(eng+8)):0;
-    void **vt=impl?*(void***)impl:NULL;
-    if(!vt || vt!=(void**)RVA(RVA_IME_IMPL_VT)){JOURNAL("champ_room (0=moteur introuvable ou inattendu)",0);return;}
-    memcpy(ime_orig,vt,sizeof ime_orig);memcpy(ime_vt,vt,sizeof ime_vt);
-    ime_vt[7]=(void*)s7;ime_vt[11]=(void*)s11;
-    ime_impl=(BYTE*)impl;
-    JOURNAL("champ_room (1=ok)",InterlockedCompareExchangePointer((void**)impl,ime_vt,vt)==vt);
+
+    void **orig=(void**)RVA(RVA_IME_IMPL_VT);BOOL logged=FALSE;
+    for(DWORD n=0;;n++){
+        DWORD eng=rd32(RVA(RVA_IMENGINE));
+        DWORD impl=eng?rd32((void*)(eng+8)):0;
+        void **vt=impl?(void**)rd32((void*)impl):NULL;
+        if(vt==orig){
+            if(!ime_orig[0]){memcpy(ime_orig,orig,sizeof ime_orig);memcpy(ime_vt,orig,sizeof ime_vt);ime_vt[7]=(void*)s7;ime_vt[11]=(void*)s11;}
+            ime_impl=(BYTE*)impl;
+            JOURNAL("champ_room (1=ok)",InterlockedCompareExchangePointer((void**)impl,ime_vt,vt)==vt);
+        }else if(vt && vt!=orig && vt!=(void**)ime_vt && !logged){
+            logged=TRUE;JOURNAL("champ_room (0=moteur inattendu)",0);
+        }else if(!vt && n==600 && !logged){
+            JOURNAL("champ_room (en attente du moteur, toujours surveille)",0);
+        }
+        Sleep(100);
+    }
 }
 
 static DWORD WINAPI worker(void *u){
@@ -335,7 +344,7 @@ static DWORD WINAPI worker(void *u){
 void LobbyName_Demarrer(void){
     base=(BYTE*)GetModuleHandleW(NULL);
     InitializeCriticalSection(&lock);
-    JOURNAL("debut 1.0",0);
+    JOURNAL("debut 1.0.1",0);
     AjouterTic(Tic);
     HANDLE t=CreateThread(NULL,0,worker,NULL,0,NULL);if(t)CloseHandle(t);
 }
